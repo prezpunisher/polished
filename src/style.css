@@ -61,6 +61,16 @@ input {
     linear-gradient(160deg, #101621 0%, #263144 56%, #172027 100%);
 }
 
+.app.dark-theme {
+  background:
+    radial-gradient(circle at 18% 14%, rgba(255, 255, 255, 0.75) 0 1px, transparent 2px),
+    radial-gradient(circle at 72% 10%, rgba(255, 255, 255, 0.7) 0 1px, transparent 2px),
+    radial-gradient(circle at 88% 34%, rgba(183, 221, 255, 0.68) 0 1px, transparent 2px),
+    radial-gradient(circle at 36% 42%, rgba(255, 255, 255, 0.52) 0 1px, transparent 2px),
+    radial-gradient(circle at 62% 66%, rgba(183, 221, 255, 0.5) 0 1px, transparent 2px),
+    linear-gradient(160deg, #070b15 0%, #172033 56%, #0b101d 100%);
+}
+
 .app.light-theme {
   background:
     radial-gradient(circle at 18% 10%, rgba(255, 217, 130, 0.48), transparent 34%),
@@ -70,9 +80,12 @@ input {
 
 .app.clear.dark-theme {
   background:
-    radial-gradient(circle at 18% 10%, rgba(255, 207, 91, 0.55), transparent 34%),
-    radial-gradient(circle at 86% 12%, rgba(93, 191, 255, 0.32), transparent 34%),
-    linear-gradient(160deg, #1a3654 0%, #466d88 48%, #162433 100%);
+    radial-gradient(circle at 12% 18%, rgba(255, 255, 255, 0.84) 0 1px, transparent 2px),
+    radial-gradient(circle at 24% 58%, rgba(199, 228, 255, 0.64) 0 1px, transparent 2px),
+    radial-gradient(circle at 46% 13%, rgba(255, 255, 255, 0.58) 0 1px, transparent 2px),
+    radial-gradient(circle at 68% 30%, rgba(199, 228, 255, 0.72) 0 1px, transparent 2px),
+    radial-gradient(circle at 82% 70%, rgba(255, 255, 255, 0.62) 0 1px, transparent 2px),
+    linear-gradient(160deg, #050814 0%, #152443 48%, #070d1c 100%);
 }
 
 .app.clear.light-theme {
@@ -147,13 +160,19 @@ input {
   background: var(--panel-strong);
   box-shadow: 0 18px 60px var(--shadow);
   backdrop-filter: blur(24px);
-  transition: grid-template-columns 180ms ease, padding 180ms ease, border-radius 180ms ease;
+  transition:
+    grid-template-columns 320ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    padding 320ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    border-radius 320ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    background-color 320ms ease,
+    box-shadow 320ms ease;
 }
 
 .app-bar.compact {
   grid-template-columns: minmax(160px, 1fr);
   padding: 8px 10px;
   border-radius: 999px;
+  box-shadow: 0 10px 34px var(--shadow);
 }
 
 .location-stack {
@@ -304,6 +323,46 @@ button:disabled {
   background: rgba(114, 191, 255, 0.14);
 }
 
+.dark-theme .weather-animation span:nth-child(1) {
+  width: 4px;
+  height: 4px;
+  top: 64px;
+  right: 104px;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow:
+    -96px 38px 0 rgba(255, 255, 255, 0.66),
+    -46px 128px 0 rgba(185, 222, 255, 0.72),
+    72px 54px 0 rgba(255, 255, 255, 0.58),
+    18px 188px 0 rgba(185, 222, 255, 0.62);
+  filter: none;
+}
+
+.dark-theme .weather-animation span:nth-child(2) {
+  width: 3px;
+  height: 3px;
+  top: 132px;
+  right: 220px;
+  background: rgba(255, 255, 255, 0.76);
+  box-shadow:
+    -106px -48px 0 rgba(185, 222, 255, 0.7),
+    112px -30px 0 rgba(255, 255, 255, 0.62),
+    138px 92px 0 rgba(185, 222, 255, 0.62),
+    -28px 184px 0 rgba(255, 255, 255, 0.58);
+  filter: none;
+}
+
+.dark-theme .weather-animation span:nth-child(3) {
+  width: 150px;
+  height: 150px;
+  top: 44px;
+  right: 44px;
+  left: auto;
+  bottom: auto;
+  border: 1px solid rgba(216, 232, 255, 0.18);
+  background: rgba(255, 255, 255, 0.06);
+  filter: blur(1px);
+}
+
 .condition-row,
 .temperature-header,
 .section-title {
@@ -449,6 +508,11 @@ h1 {
   background: var(--tile);
 }
 
+.forecast-card {
+  display: grid;
+  gap: 14px;
+}
+
 .forecast-day {
   display: grid;
   gap: 2px;
@@ -461,41 +525,12 @@ h1 {
 }
 
 .forecast-day span,
-.forecast-condition,
-.rain,
 .forecast-low,
+.rain-summary span,
 .hour-card small {
   color: var(--muted);
   font-size: 12px;
   line-height: 1.35;
-}
-
-.forecast-icon {
-  display: block;
-  margin: 14px 0 10px;
-  font-size: 28px;
-}
-
-.temp-bars {
-  display: flex;
-  align-items: end;
-  gap: 5px;
-  height: 88px;
-  margin: 8px 0 10px;
-}
-
-.temp-bars span {
-  flex: 1;
-  min-height: 18px;
-  border-radius: 999px 999px 6px 6px;
-}
-
-.temp-bars span:first-child {
-  background: linear-gradient(180deg, #ffd166, #ff8a4c);
-}
-
-.temp-bars span:last-child {
-  background: linear-gradient(180deg, #8ecbff, #4b8fe8);
 }
 
 .forecast-temp {
@@ -505,24 +540,23 @@ h1 {
   font-weight: 900;
 }
 
-.forecast-low,
-.forecast-condition,
-.rain {
+.forecast-summary {
+  display: grid;
+  gap: 2px;
+}
+
+.forecast-low {
   margin: 0;
 }
 
-.rain-bar {
-  height: 6px;
-  margin: 10px 0 6px;
-  border-radius: 999px;
-  background: var(--line);
+.rain-summary {
+  display: grid;
+  gap: 4px;
 }
 
-.rain-bar span {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: #71c7ff;
+.rain-summary strong {
+  color: var(--text-strong);
+  font-size: 18px;
 }
 
 .hourly-strip {

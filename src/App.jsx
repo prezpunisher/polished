@@ -59,7 +59,7 @@ export default function App() {
       }
 
       const place = geoData.results[0];
-      const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${place.latitude}&longitude=${place.longitude}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,is_day&hourly=temperature_2m,weather_code,precipitation_probability&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=auto&forecast_hours=24`;
+      const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${place.latitude}&longitude=${place.longitude}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,is_day&hourly=temperature_2m,weather_code,precipitation_probability&daily=weather_code,temperature_2m_max,temperature_2m_min,cloud_cover_mean,precipitation_probability_max&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=auto&forecast_hours=24`;
       const weatherResponse = await fetch(weatherUrl);
 
       if (!weatherResponse.ok) {
@@ -193,6 +193,37 @@ export default function App() {
               <p className="muted-copy">No severe weather alert data is available from this MVP source.</p>
             </section>
 
+            {hourly && (
+              <section className="block hourly" aria-label="24-hour forecast">
+                <div className="section-title">
+                  <div>
+                    <p>Hourly forecast</p>
+                    <h2>Next 24 hours</h2>
+                  </div>
+                  <span>Temperature and rain</span>
+                </div>
+
+                <div className="hourly-strip">
+                  {hourly.time.slice(0, 24).map((time, index) => {
+                    const hourCondition = getCondition(hourly.weather_code[index]);
+                    const hourLabel = new Date(time).toLocaleTimeString("en-US", {
+                      hour: "numeric",
+                      hour12: true
+                    });
+
+                    return (
+                      <article className="hour-card" key={time}>
+                        <strong>{index === 0 ? "Now" : hourLabel}</strong>
+                        <span aria-hidden="true">{hourCondition.icon}</span>
+                        <p>{Math.round(hourly.temperature_2m[index])}°</p>
+                        <small>{hourly.precipitation_probability[index] ?? 0}%</small>
+                      </article>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
+
             <aside className="block details-panel" aria-label="Weather details">
               <div className="section-title">
                 <div>
@@ -225,15 +256,13 @@ export default function App() {
               <div className="section-title">
                 <div>
                   <p>Daily forecast</p>
-                  <h2>Conditions trend</h2>
+                  <h2>Daily outlook</h2>
                 </div>
                 <span>{locationName}</span>
               </div>
 
               <div className="daily-trend">
                 {daily.time.map((day, index) => {
-                  const dayCondition = getCondition(daily.weather_code[index]);
-
                   return (
                     <article className="forecast-card" key={day}>
                       <div className="forecast-day">
@@ -246,54 +275,19 @@ export default function App() {
                         </strong>
                         <span>{formatDate(day)}</span>
                       </div>
-                      <span className="forecast-icon" aria-hidden="true">{dayCondition.icon}</span>
-                      <div className="temp-bars" aria-label="Temperature trend">
-                        <span style={{ height: `${Math.max(22, daily.temperature_2m_max[index])}%` }}></span>
-                        <span style={{ height: `${Math.max(18, daily.temperature_2m_min[index])}%` }}></span>
+                      <div className="forecast-summary">
+                        <p className="forecast-temp">{Math.round(daily.temperature_2m_max[index])}°</p>
+                        <p className="forecast-low">{Math.round(daily.temperature_2m_min[index])}° low</p>
                       </div>
-                      <p className="forecast-temp">{Math.round(daily.temperature_2m_max[index])}°</p>
-                      <p className="forecast-low">{Math.round(daily.temperature_2m_min[index])}°</p>
-                      <p className="forecast-condition">{dayCondition.label}</p>
-                      <div className="rain-bar">
-                        <span style={{ width: `${daily.precipitation_probability_max[index] ?? 0}%` }}></span>
+                      <div className="rain-summary">
+                        <span>Overcast</span>
+                        <strong>{daily.cloud_cover_mean[index] ?? 0}%</strong>
                       </div>
-                      <p className="rain">{daily.precipitation_probability_max[index] ?? 0}%</p>
                     </article>
                   );
                 })}
               </div>
             </section>
-
-            {hourly && (
-              <section className="block hourly" aria-label="24-hour forecast">
-                <div className="section-title">
-                  <div>
-                    <p>Hourly forecast</p>
-                    <h2>Next 24 hours</h2>
-                  </div>
-                  <span>Temperature and rain</span>
-                </div>
-
-                <div className="hourly-strip">
-                  {hourly.time.slice(0, 24).map((time, index) => {
-                    const hourCondition = getCondition(hourly.weather_code[index]);
-                    const hourLabel = new Date(time).toLocaleTimeString("en-US", {
-                      hour: "numeric",
-                      hour12: true
-                    });
-
-                    return (
-                      <article className="hour-card" key={time}>
-                        <strong>{index === 0 ? "Now" : hourLabel}</strong>
-                        <span aria-hidden="true">{hourCondition.icon}</span>
-                        <p>{Math.round(hourly.temperature_2m[index])}°</p>
-                        <small>{hourly.precipitation_probability[index] ?? 0}%</small>
-                      </article>
-                    );
-                  })}
-                </div>
-              </section>
-            )}
           </div>
         )}
 
