@@ -20,6 +20,7 @@ export default function App() {
     if (!cleanCity) {
       setError("Enter a city to search.");
       setWeather(null);
+      setLocationName("");
       return;
     }
 
@@ -43,7 +44,7 @@ export default function App() {
       }
 
       const place = geoData.results[0];
-      const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${place.latitude}&longitude=${place.longitude}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=auto`;
+      const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${place.latitude}&longitude=${place.longitude}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m&hourly=temperature_2m,weather_code,precipitation_probability&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=auto&forecast_hours=24`;
       const weatherResponse = await fetch(weatherUrl);
 
       if (!weatherResponse.ok) {
@@ -70,26 +71,29 @@ export default function App() {
 
   const current = weather?.current;
   const daily = weather?.daily;
+  const hourly = weather?.hourly;
   const currentCondition = useMemo(
     () => getCondition(current?.weather_code),
     [current?.weather_code]
   );
   const todayHigh = daily ? Math.round(daily.temperature_2m_max[0]) : null;
   const todayLow = daily ? Math.round(daily.temperature_2m_min[0]) : null;
+  const refreshedAt = current?.time
+    ? new Date(current.time).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })
+    : "Just now";
 
   return (
     <main className={`app ${currentCondition.tone}`}>
-      <section className="window" aria-label="Weather search app">
-        <header className="titlebar">
-          <div className="traffic-lights" aria-hidden="true">
-            <span></span>
-            <span></span>
-            <span></span>
-          </div>
-
-          <div className="brand">
-            <p>Weather</p>
-            <span>Current conditions and 7-day outlook</span>
+      <section className="weather-app" aria-label="Weather search app">
+        <header className="app-bar">
+          <div className="location-stack">
+            <button className="icon-button" type="button" aria-label="Location list">
+              ←
+            </button>
+            <div>
+              <p className="location-name">{locationName || "Weather"}</p>
+              <span>Last refresh {refreshedAt}</span>
+            </div>
           </div>
 
           <form onSubmit={handleSubmit} className="search">
@@ -107,6 +111,15 @@ export default function App() {
               </button>
             </div>
           </form>
+
+          <div className="app-actions" aria-label="Location actions">
+            <button className="icon-button" type="button" aria-label="Open location in another app">
+              ↗
+            </button>
+            <button className="icon-button" type="button" aria-label="Edit location options">
+              ⋯
+            </button>
+          </div>
         </header>
 
         {error && <p className="error" role="alert">{error}</p>}
@@ -114,42 +127,57 @@ export default function App() {
         {loading && !weather && <p className="empty">Loading the latest forecast...</p>}
 
         {current && daily && (
-          <div className="dashboard">
-            <section className="current-weather" aria-label={`Current weather for ${locationName}`}>
-              <div className="current-topline">
-                <p className="location">{locationName}</p>
-                <span>{new Date().toLocaleDateString("en-US", { weekday: "long" })}</span>
+          <div className="home-grid">
+            <section className="hero-panel" aria-label={`Current weather for ${locationName}`}>
+              <div className="weather-animation" aria-hidden="true">
+                <span></span>
+                <span></span>
+                <span></span>
               </div>
 
-              <div className="hero-weather">
+              <div className="condition-row">
                 <div>
-                  <p className="eyebrow">Now</p>
-                  <h1>{Math.round(current.temperature_2m)}°</h1>
+                  <p className="eyebrow">Current weather</p>
                   <p className="condition">{currentCondition.label}</p>
                 </div>
-
                 <div className="weather-visual" aria-label={currentCondition.label} role="img">
                   <span>{currentCondition.icon}</span>
                 </div>
               </div>
 
-              <div className="today-range">
-                <span>High {todayHigh}°</span>
-                <span>Low {todayLow}°</span>
-                <span>Feels {Math.round(current.apparent_temperature)}°</span>
+              <div className="temperature-header">
+                <h1>{Math.round(current.temperature_2m)}°</h1>
+                <div>
+                  <span>Feels like {Math.round(current.apparent_temperature)}°</span>
+                  <span>{todayHigh}° daytime / {todayLow}° nighttime</span>
+                </div>
               </div>
 
               <p className="quick-note">
-                A clean forecast for {submittedCity}, updated from Open-Meteo.
+                {submittedCity} forecast from Open-Meteo. Daily values follow the main-screen pattern:
+                condition, high, low, and precipitation probability.
               </p>
             </section>
 
-            <aside className="details-panel" aria-label="Weather details">
-              <div className="panel-head">
-                <p>Details</p>
+            <section className="block alert-block" aria-label="Weather alerts">
+              <div className="section-title">
+                <div>
+                  <p>Alerts</p>
+                  <h2>No active alerts</h2>
+                </div>
+                <span>Current location</span>
+              </div>
+              <p className="muted-copy">No severe weather alert data is available from this MVP source.</p>
+            </section>
+
+            <aside className="block details-panel" aria-label="Weather details">
+              <div className="section-title">
+                <div>
+                  <p>Blocks</p>
+                  <h2>Conditions</h2>
+                </div>
                 <span>Right now</span>
               </div>
-
               <div className="stats">
                 <div>
                   <span>Feels Like</span>
@@ -170,16 +198,16 @@ export default function App() {
               </div>
             </aside>
 
-            <section className="forecast" aria-label="7-day forecast">
+            <section className="block forecast" aria-label="7-day forecast">
               <div className="section-title">
                 <div>
-                  <p>Forecast</p>
-                  <h2>Next 7 days</h2>
+                  <p>Daily forecast</p>
+                  <h2>Conditions trend</h2>
                 </div>
                 <span>{locationName}</span>
               </div>
 
-              <div className="forecast-grid">
+              <div className="daily-trend">
                 {daily.time.map((day, index) => {
                   const dayCondition = getCondition(daily.weather_code[index]);
 
@@ -187,24 +215,62 @@ export default function App() {
                     <article className="forecast-card" key={day}>
                       <div className="forecast-day">
                         <strong>
-                          {new Date(`${day}T00:00:00`).toLocaleDateString("en-US", {
-                            weekday: "short"
-                          })}
+                          {index === 0
+                            ? "Today"
+                            : new Date(`${day}T00:00:00`).toLocaleDateString("en-US", {
+                                weekday: "short"
+                              })}
                         </strong>
                         <span>{formatDate(day)}</span>
                       </div>
                       <span className="forecast-icon" aria-hidden="true">{dayCondition.icon}</span>
-                      <p className="forecast-temp">
-                        {Math.round(daily.temperature_2m_max[index])}°
-                        <span>{Math.round(daily.temperature_2m_min[index])}°</span>
-                      </p>
+                      <div className="temp-bars" aria-label="Temperature trend">
+                        <span style={{ height: `${Math.max(22, daily.temperature_2m_max[index])}%` }}></span>
+                        <span style={{ height: `${Math.max(18, daily.temperature_2m_min[index])}%` }}></span>
+                      </div>
+                      <p className="forecast-temp">{Math.round(daily.temperature_2m_max[index])}°</p>
+                      <p className="forecast-low">{Math.round(daily.temperature_2m_min[index])}°</p>
                       <p className="forecast-condition">{dayCondition.label}</p>
-                      <p className="rain">{daily.precipitation_probability_max[index] ?? 0}% rain</p>
+                      <div className="rain-bar">
+                        <span style={{ width: `${daily.precipitation_probability_max[index] ?? 0}%` }}></span>
+                      </div>
+                      <p className="rain">{daily.precipitation_probability_max[index] ?? 0}%</p>
                     </article>
                   );
                 })}
               </div>
             </section>
+
+            {hourly && (
+              <section className="block hourly" aria-label="24-hour forecast">
+                <div className="section-title">
+                  <div>
+                    <p>Hourly forecast</p>
+                    <h2>Next 24 hours</h2>
+                  </div>
+                  <span>Temperature and rain</span>
+                </div>
+
+                <div className="hourly-strip">
+                  {hourly.time.slice(0, 24).map((time, index) => {
+                    const hourCondition = getCondition(hourly.weather_code[index]);
+                    const hourLabel = new Date(time).toLocaleTimeString("en-US", {
+                      hour: "numeric",
+                      hour12: true
+                    });
+
+                    return (
+                      <article className="hour-card" key={time}>
+                        <strong>{index === 0 ? "Now" : hourLabel}</strong>
+                        <span aria-hidden="true">{hourCondition.icon}</span>
+                        <p>{Math.round(hourly.temperature_2m[index])}°</p>
+                        <small>{hourly.precipitation_probability[index] ?? 0}%</small>
+                      </article>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
           </div>
         )}
 
