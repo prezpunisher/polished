@@ -32,13 +32,32 @@ Then open the local URL Vite prints, usually:
 http://localhost:5173
 ```
 
+## Test
+
+```bash
+npm test
+```
+
+The test suite uses Vitest and React Testing Library. It covers:
+
+- Weather condition mapping
+- Location and date formatting
+- Default Dallas weather load
+- Searching another city
+- Empty city validation
+- City-not-found errors
+
 ## Project Structure
 
 ```text
 simple-weather-app/
   index.html
   src/
+    App.jsx
     main.jsx
+    weather.js
+    App.test.jsx
+    weather.test.js
     style.css
 ```
 
