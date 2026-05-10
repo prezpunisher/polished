@@ -27,6 +27,12 @@ Production URL:
 https://simple-weather-app-liart-gamma.vercel.app
 ```
 
+## Deployment
+
+Production deploys are manual. Merging to `main` runs CI only and does not automatically deploy.
+
+See [docs/deployment.md](docs/deployment.md) for the GitHub Actions and Vercel workflow.
+
 ## Run Locally
 
 ```bash
