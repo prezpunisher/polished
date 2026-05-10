@@ -29,8 +29,19 @@ export const weatherCodes = {
   99: { label: "Thunderstorm with hail", icon: "⛈️", tone: "storm" }
 };
 
-export function getCondition(code) {
-  return weatherCodes[code] || { label: "Weather unavailable", icon: "🌡️", tone: "cloudy" };
+const nightIcons = {
+  0: "🌙",
+  1: "🌙",
+  2: "☁️"
+};
+
+export function getCondition(code, isDay = true) {
+  const condition = weatherCodes[code] || { label: "Weather unavailable", icon: "🌡️", tone: "cloudy" };
+
+  return {
+    ...condition,
+    icon: isDay ? condition.icon : nightIcons[code] || condition.icon
+  };
 }
 
 export function formatLocation(place) {

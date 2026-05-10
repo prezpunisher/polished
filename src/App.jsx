@@ -9,9 +9,24 @@ export default function App() {
   const [locationName, setLocationName] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [themePreference, setThemePreference] = useState("auto");
+  const [isBarCompact, setIsBarCompact] = useState(false);
 
   useEffect(() => {
     getWeather("Dallas");
+  }, []);
+
+  useEffect(() => {
+    function handleScroll() {
+      setIsBarCompact(window.scrollY > 80);
+    }
+
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+    };
   }, []);
 
   async function getWeather(searchCity) {
@@ -44,7 +59,7 @@ export default function App() {
       }
 
       const place = geoData.results[0];
-      const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${place.latitude}&longitude=${place.longitude}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m&hourly=temperature_2m,weather_code,precipitation_probability&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=auto&forecast_hours=24`;
+      const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${place.latitude}&longitude=${place.longitude}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,is_day&hourly=temperature_2m,weather_code,precipitation_probability&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=auto&forecast_hours=24`;
       const weatherResponse = await fetch(weatherUrl);
 
       if (!weatherResponse.ok) {
@@ -69,45 +84,65 @@ export default function App() {
     getWeather(city);
   }
 
+  function toggleTheme() {
+    setThemePreference((currentThemePreference) => {
+      const currentTheme = currentThemePreference === "auto" ? locationTheme : currentThemePreference;
+      return currentTheme === "dark" ? "light" : "dark";
+    });
+  }
+
   const current = weather?.current;
   const daily = weather?.daily;
   const hourly = weather?.hourly;
+  const locationTheme = current?.is_day === 1 ? "light" : "dark";
+  const theme = themePreference === "auto" ? locationTheme : themePreference;
   const currentCondition = useMemo(
-    () => getCondition(current?.weather_code),
-    [current?.weather_code]
+    () => getCondition(current?.weather_code, current?.is_day !== 0),
+    [current?.weather_code, current?.is_day]
   );
   const todayHigh = daily ? Math.round(daily.temperature_2m_max[0]) : null;
   const todayLow = daily ? Math.round(daily.temperature_2m_min[0]) : null;
-  const refreshedAt = current?.time
-    ? new Date(current.time).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })
-    : "Just now";
 
   return (
-    <main className={`app ${currentCondition.tone}`}>
+    <main className={`app ${currentCondition.tone} ${theme}-theme`}>
       <section className="weather-app" aria-label="Weather search app">
-        <header className="app-bar">
+        <header className={`app-bar ${isBarCompact ? "compact" : ""}`}>
           <div className="location-stack">
             <div>
               <p className="location-name">{locationName || "Weather"}</p>
-              <span>Last refresh {refreshedAt}</span>
             </div>
           </div>
 
-          <form onSubmit={handleSubmit} className="search">
-            <label htmlFor="city">Search city</label>
-            <div className="search-row">
-              <input
-                id="city"
-                value={city}
-                onChange={(event) => setCity(event.target.value)}
-                placeholder="City or place"
-                autoComplete="address-level2"
-              />
-              <button type="submit" disabled={loading} aria-label="Search weather">
-                {loading ? "..." : "Search"}
+          {!isBarCompact && (
+            <>
+              <form onSubmit={handleSubmit} className="search">
+                <label htmlFor="city">Search city</label>
+                <div className="search-row">
+                  <input
+                    id="city"
+                    value={city}
+                    onChange={(event) => setCity(event.target.value)}
+                    placeholder="City or place"
+                    autoComplete="address-level2"
+                  />
+                  <button type="submit" disabled={loading} aria-label="Search weather">
+                    {loading ? "..." : "Search"}
+                  </button>
+                </div>
+              </form>
+
+              <button
+                className="theme-toggle"
+                type="button"
+                aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+                aria-pressed={theme === "light"}
+                title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+                onClick={toggleTheme}
+              >
+                <span aria-hidden="true">{theme === "dark" ? "☾" : "☀"}</span>
               </button>
-            </div>
-          </form>
+            </>
+          )}
         </header>
 
         {error && <p className="error" role="alert">{error}</p>}

@@ -11,6 +11,15 @@ describe("weather helpers", () => {
     expect(getCondition(95).label).toBe("Thunderstorm");
   });
 
+  it("uses night icons for clear current conditions after dark", () => {
+    expect(getCondition(0, false)).toEqual({
+      label: "Clear sky",
+      icon: "🌙",
+      tone: "clear"
+    });
+    expect(getCondition(1, false).icon).toBe("🌙");
+  });
+
   it("returns a fallback condition for unknown weather codes", () => {
     expect(getCondition(999)).toEqual({
       label: "Weather unavailable",
