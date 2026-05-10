@@ -87,9 +87,6 @@ export default function App() {
       <section className="weather-app" aria-label="Weather search app">
         <header className="app-bar">
           <div className="location-stack">
-            <button className="icon-button" type="button" aria-label="Location list">
-              ←
-            </button>
             <div>
               <p className="location-name">{locationName || "Weather"}</p>
               <span>Last refresh {refreshedAt}</span>
@@ -111,15 +108,6 @@ export default function App() {
               </button>
             </div>
           </form>
-
-          <div className="app-actions" aria-label="Location actions">
-            <button className="icon-button" type="button" aria-label="Open location in another app">
-              ↗
-            </button>
-            <button className="icon-button" type="button" aria-label="Edit location options">
-              ⋯
-            </button>
-          </div>
         </header>
 
         {error && <p className="error" role="alert">{error}</p>}

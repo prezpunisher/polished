@@ -94,6 +94,20 @@ describe("App", () => {
     expect(screen.getByRole("region", { name: "Weather alerts" })).toHaveTextContent("No active alerts");
   });
 
+  it("does not render unimplemented action buttons", async () => {
+    mockSuccessfulWeatherFetch();
+
+    render(<App />);
+
+    await screen.findByRole("region", { name: "Current weather for Dallas, Texas" });
+
+    expect(screen.getAllByRole("button")).toHaveLength(1);
+    expect(screen.getByRole("button", { name: "Search weather" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Location list" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Open location in another app" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Edit location options" })).not.toBeInTheDocument();
+  });
+
   it("searches another city and renders the returned forecast", async () => {
     const user = userEvent.setup();
     mockSuccessfulWeatherFetch();
