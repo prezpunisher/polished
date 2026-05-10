@@ -23,6 +23,7 @@ const londonPlace = {
 function makeWeatherData(overrides = {}) {
   return {
     current: {
+      time: "2026-05-09T14:00",
       temperature_2m: 72.4,
       apparent_temperature: 74.1,
       relative_humidity_2m: 45,
@@ -45,6 +46,15 @@ function makeWeatherData(overrides = {}) {
       temperature_2m_min: [61, 62, 60, 58, 59, 64, 66],
       precipitation_probability_max: [10, 20, 30, 60, 50, 0, 70],
       ...overrides.daily
+    },
+    hourly: {
+      time: Array.from({ length: 24 }, (_, index) => {
+        return `2026-05-${String(9 + Math.floor(index / 24)).padStart(2, "0")}T${String(index).padStart(2, "0")}:00`;
+      }),
+      weather_code: Array.from({ length: 24 }, (_, index) => [1, 2, 3, 61][index % 4]),
+      temperature_2m: Array.from({ length: 24 }, (_, index) => 65 + (index % 8)),
+      precipitation_probability: Array.from({ length: 24 }, (_, index) => (index % 6) * 10),
+      ...overrides.hourly
     }
   };
 }
@@ -80,7 +90,8 @@ describe("App", () => {
     expect(screen.getAllByText("Mainly clear").length).toBeGreaterThan(0);
     expect(screen.getByRole("heading", { name: "72°" })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "7-day forecast" })).toBeInTheDocument();
-    expect(screen.getAllByText(/% rain/)).toHaveLength(7);
+    expect(screen.getByRole("region", { name: "24-hour forecast" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Weather alerts" })).toHaveTextContent("No active alerts");
   });
 
   it("searches another city and renders the returned forecast", async () => {
