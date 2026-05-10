@@ -45,6 +45,7 @@ function makeWeatherData(overrides = {}) {
       weather_code: [1, 2, 3, 61, 80, 0, 95],
       temperature_2m_max: [74, 76, 75, 72, 73, 80, 79],
       temperature_2m_min: [61, 62, 60, 58, 59, 64, 66],
+      cloud_cover_mean: [22, 44, 80, 68, 57, 12, 91],
       precipitation_probability_max: [10, 20, 30, 60, 50, 0, 70],
       ...overrides.daily
     },
@@ -98,6 +99,7 @@ describe("App", () => {
     expect(screen.getByRole("region", { name: "24-hour forecast" })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Weather alerts" })).toHaveTextContent("No active alerts");
     expect(fetch.mock.calls[1][0]).toContain("is_day");
+    expect(fetch.mock.calls[1][0]).toContain("cloud_cover_mean");
   });
 
   it("renders only implemented buttons", async () => {
@@ -155,6 +157,26 @@ describe("App", () => {
     expect(container.querySelector(".app")).toHaveClass("dark-theme");
     expect(screen.getByRole("img", { name: "Clear sky" })).toHaveTextContent("🌙");
     expect(screen.getByRole("button", { name: "Switch to light mode" })).toBeInTheDocument();
+  });
+
+  it("moves the next 24 hours above details and keeps daily forecast simple", async () => {
+    mockSuccessfulWeatherFetch();
+
+    render(<App />);
+
+    await screen.findByRole("region", { name: "Current weather for Dallas, Texas" });
+
+    const hourlyForecast = screen.getByRole("region", { name: "24-hour forecast" });
+    const details = screen.getByRole("complementary", { name: "Weather details" });
+    const dailyForecast = screen.getByRole("region", { name: "7-day forecast" });
+
+    expect(hourlyForecast.compareDocumentPosition(details)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(within(dailyForecast).getByRole("heading", { name: "Daily outlook" })).toBeInTheDocument();
+    expect(within(dailyForecast).getAllByText("Overcast")).toHaveLength(7);
+    expect(within(dailyForecast).getByText("22%")).toBeInTheDocument();
+    expect(dailyForecast.querySelector(".forecast-icon")).not.toBeInTheDocument();
+    expect(dailyForecast.querySelector(".temp-bars")).not.toBeInTheDocument();
+    expect(within(dailyForecast).queryByText("Mainly clear")).not.toBeInTheDocument();
   });
 
   it("does not show last refresh time in the app bar", async () => {
