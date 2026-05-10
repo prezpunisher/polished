@@ -19,6 +19,14 @@ A beginner-friendly React weather app based on `weather_app_scope.md`.
 
 Open-Meteo does not require an API key for this MVP.
 
+## Live App
+
+Production URL:
+
+```text
+https://simple-weather-app-liart-gamma.vercel.app
+```
+
 ## Run Locally
 
 ```bash
