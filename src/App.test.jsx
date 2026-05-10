@@ -1,6 +1,6 @@
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import App from "./App";
 
@@ -29,6 +29,7 @@ function makeWeatherData(overrides = {}) {
       relative_humidity_2m: 45,
       weather_code: 1,
       wind_speed_10m: 8.2,
+      is_day: 1,
       ...overrides.current
     },
     daily: {
@@ -74,6 +75,10 @@ function mockSuccessfulWeatherFetch(place = dallasPlace, weather = makeWeatherDa
 describe("App", () => {
   beforeEach(() => {
     global.fetch = vi.fn();
+    Object.defineProperty(window, "scrollY", {
+      configurable: true,
+      value: 0
+    });
   });
 
   afterEach(() => {
@@ -92,20 +97,111 @@ describe("App", () => {
     expect(screen.getByRole("region", { name: "7-day forecast" })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "24-hour forecast" })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Weather alerts" })).toHaveTextContent("No active alerts");
+    expect(fetch.mock.calls[1][0]).toContain("is_day");
   });
 
-  it("does not render unimplemented action buttons", async () => {
+  it("renders only implemented buttons", async () => {
     mockSuccessfulWeatherFetch();
 
     render(<App />);
 
     await screen.findByRole("region", { name: "Current weather for Dallas, Texas" });
 
-    expect(screen.getAllByRole("button")).toHaveLength(1);
+    expect(screen.getAllByRole("button")).toHaveLength(2);
     expect(screen.getByRole("button", { name: "Search weather" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Switch to dark mode" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Location list" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Open location in another app" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Edit location options" })).not.toBeInTheDocument();
+  });
+
+  it("toggles between dark and light mode", async () => {
+    const user = userEvent.setup();
+    mockSuccessfulWeatherFetch();
+
+    const { container } = render(<App />);
+
+    await screen.findByRole("region", { name: "Current weather for Dallas, Texas" });
+
+    const app = container.querySelector(".app");
+    const themeButton = screen.getByRole("button", { name: "Switch to dark mode" });
+
+    expect(app).toHaveClass("light-theme");
+    expect(themeButton).toHaveTextContent("☀");
+    expect(themeButton).toHaveAttribute("aria-pressed", "true");
+
+    await user.click(themeButton);
+
+    expect(app).toHaveClass("dark-theme");
+    expect(screen.getByRole("button", { name: "Switch to light mode" })).toHaveTextContent("☾");
+    expect(screen.getByRole("button", { name: "Switch to light mode" })).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("uses nighttime weather data for the default theme and current clear icon", async () => {
+    mockSuccessfulWeatherFetch(
+      dallasPlace,
+      makeWeatherData({
+        current: {
+          weather_code: 0,
+          is_day: 0
+        }
+      })
+    );
+
+    const { container } = render(<App />);
+
+    await screen.findByRole("region", { name: "Current weather for Dallas, Texas" });
+
+    expect(container.querySelector(".app")).toHaveClass("dark-theme");
+    expect(screen.getByRole("img", { name: "Clear sky" })).toHaveTextContent("🌙");
+    expect(screen.getByRole("button", { name: "Switch to light mode" })).toBeInTheDocument();
+  });
+
+  it("does not show last refresh time in the app bar", async () => {
+    mockSuccessfulWeatherFetch();
+
+    render(<App />);
+
+    await screen.findByRole("region", { name: "Current weather for Dallas, Texas" });
+
+    expect(screen.queryByText(/Last refresh/i)).not.toBeInTheDocument();
+  });
+
+  it("compacts the app bar when the user scrolls down", async () => {
+    mockSuccessfulWeatherFetch();
+
+    const { container } = render(<App />);
+
+    await screen.findByRole("region", { name: "Current weather for Dallas, Texas" });
+
+    const appBar = container.querySelector(".app-bar");
+
+    expect(appBar).not.toHaveClass("compact");
+
+    Object.defineProperty(window, "scrollY", {
+      configurable: true,
+      value: 120
+    });
+    act(() => {
+      window.dispatchEvent(new Event("scroll"));
+    });
+
+    expect(appBar).toHaveClass("compact");
+    expect(screen.queryByRole("button", { name: "Search weather" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Switch to/i })).not.toBeInTheDocument();
+    expect(within(appBar).getByText("Dallas, Texas")).toBeInTheDocument();
+
+    Object.defineProperty(window, "scrollY", {
+      configurable: true,
+      value: 0
+    });
+    act(() => {
+      window.dispatchEvent(new Event("scroll"));
+    });
+
+    expect(appBar).not.toHaveClass("compact");
+    expect(screen.getByRole("button", { name: "Search weather" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Switch to dark mode" })).toBeInTheDocument();
   });
 
   it("searches another city and renders the returned forecast", async () => {
