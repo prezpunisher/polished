@@ -121,16 +121,6 @@ describe("App", () => {
     expect(screen.getByLabelText("Title")).toHaveValue("Team sync");
   });
 
-  it("inserts a json code block from the editor tools", async () => {
-    const user = userEvent.setup();
-
-    render(<App />);
-
-    await user.selectOptions(screen.getByLabelText("Code block language"), "json");
-    await user.click(screen.getByRole("button", { name: "Insert code block" }));
-
-    expect(screen.getByLabelText("Body").value).toContain("```json");
-  });
 
   it("adds a collaborator handle and marks the note as shared", async () => {
     const user = userEvent.setup();
@@ -201,15 +191,6 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: "Meeting archive" })).toBeInTheDocument();
   });
 
-  it("inserts a markdown checkbox from the editor tools", async () => {
-    const user = userEvent.setup();
-
-    render(<App />);
-
-    await user.click(screen.getByRole("button", { name: "Insert checkbox" }));
-
-    expect(screen.getByLabelText("Body").value).toContain("- [ ]");
-  });
 
   it("filters notes by search query", async () => {
     const user = userEvent.setup();

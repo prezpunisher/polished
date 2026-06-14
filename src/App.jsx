@@ -658,13 +658,11 @@ export default function App() {
     folders: true,
     collaboration: true
   });
-  const [codeLanguage, setCodeLanguage] = useState("json");
   const [collaboratorInput, setCollaboratorInput] = useState("");
   const [tagInput, setTagInput] = useState("");
   const [folderInput, setFolderInput] = useState("");
   const searchRef = useRef(null);
   const titleRef = useRef(null);
-  const bodyRef = useRef(null);
 
   const { notes, folders, theme, activeView, activeId } = appState;
 
@@ -1032,67 +1030,6 @@ export default function App() {
     }
 
     updateActiveNote({ content: value });
-  }
-
-  function insertCodeBlock() {
-    if (!activeNote || !bodyRef.current) {
-      return;
-    }
-
-    const textarea = bodyRef.current;
-    const selectionStart = textarea.selectionStart;
-    const selectionEnd = textarea.selectionEnd;
-    const selectedText = activeNote.content.slice(selectionStart, selectionEnd);
-    const codeContent = selectedText || "{\n  \n}";
-    const block = `\n\`\`\`${codeLanguage}\n${codeContent}\n\`\`\`\n`;
-    const nextContent =
-      activeNote.content.slice(0, selectionStart) + block + activeNote.content.slice(selectionEnd);
-
-    if (activeNote.isTitleAuto) {
-      updateActiveNote({
-        content: nextContent,
-        title: deriveTitleFromContent(nextContent),
-        isTitleAuto: true
-      });
-    } else {
-      updateActiveNote({ content: nextContent });
-    }
-
-    window.requestAnimationFrame(() => {
-      textarea.focus();
-      const cursor = selectionStart + block.length - 5;
-      textarea.setSelectionRange(cursor, cursor);
-    });
-  }
-
-  function insertCheckbox() {
-    if (!activeNote || !bodyRef.current) {
-      return;
-    }
-
-    const textarea = bodyRef.current;
-    const selectionStart = textarea.selectionStart;
-    const selectionEnd = textarea.selectionEnd;
-    const selectedText = activeNote.content.slice(selectionStart, selectionEnd).trim();
-    const line = `- [ ] ${selectedText}`;
-    const nextContent =
-      activeNote.content.slice(0, selectionStart) + line + activeNote.content.slice(selectionEnd);
-
-    if (activeNote.isTitleAuto) {
-      updateActiveNote({
-        content: nextContent,
-        title: deriveTitleFromContent(nextContent),
-        isTitleAuto: true
-      });
-    } else {
-      updateActiveNote({ content: nextContent });
-    }
-
-    window.requestAnimationFrame(() => {
-      textarea.focus();
-      const cursor = selectionStart + 6;
-      textarea.setSelectionRange(cursor, cursor);
-    });
   }
 
   function addCollaborator() {
@@ -1535,31 +1472,9 @@ export default function App() {
                   />
                 </label>
 
-                <div className="editor-tools" aria-label="Editor tools">
-                  <select
-                    aria-label="Code block language"
-                    value={codeLanguage}
-                    onChange={(event) => setCodeLanguage(event.target.value)}
-                  >
-                    <option value="json">JSON</option>
-                    <option value="sql">SQL</option>
-                    <option value="js">JavaScript</option>
-                    <option value="ts">TypeScript</option>
-                    <option value="bash">Bash</option>
-                    <option value="text">Plain text</option>
-                  </select>
-                  <button type="button" className="ghost-action" onClick={insertCodeBlock}>
-                    Insert code block
-                  </button>
-                  <button type="button" className="ghost-action" onClick={insertCheckbox}>
-                    Insert checkbox
-                  </button>
-                </div>
-
                 <label className="editor-field editor-body">
                   <span>Body</span>
                   <textarea
-                    ref={bodyRef}
                     aria-label="Body"
                     value={activeNote.content}
                     onChange={(event) => handleBodyChange(event.target.value)}

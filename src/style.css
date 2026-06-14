@@ -1001,22 +1001,6 @@ button {
   padding: 16px 18px 0;
 }
 
-.editor-tools {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
-  padding: 8px 18px 0;
-}
-
-.editor-tools select {
-  width: auto;
-  min-width: 130px;
-}
-
-.editor-tools .ghost-action {
-  height: 32px;
-}
 
 .editor-title input {
   height: auto;
