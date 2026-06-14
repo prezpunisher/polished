@@ -1,14 +1,20 @@
 # Polished Notes App
 
-A polished React notes workspace with a searchable sidebar, pinned notes, local persistence, and a focused writing pane.
+A local-first React notes workspace for fast meeting notes, one-off capture, and later retrieval.
 
 ## Features
 
-- Search notes by title, body, or tags.
-- Create, duplicate, pin, unpin, and delete notes.
-- Edit title, tags, and body in place.
-- Persist notes to `localStorage`.
-- Keep the interface responsive and compact on smaller screens.
+- Global search across the workspace
+- User-created folders
+- Collaboration filters for shared notes
+- Pin, favorite, archive, and trash states
+- Auto-generated note titles from body content
+- Markdown preview with fenced code blocks
+- Markdown checkboxes
+- Tag chips and collaborator chips
+- Local autosave and note restore history
+- Collapsible workspace sections and collection column
+- Local persistence with `localStorage`
 
 ## Tech
 
@@ -30,16 +36,26 @@ Then open the local URL Vite prints, usually:
 http://localhost:5173
 ```
 
+If `5173` is already in use, Vite will move to another local port such as `5174`.
+
 ## Test
 
 ```bash
-npm test
+npm test -- --run
+```
+
+## Build
+
+```bash
+npm run build
 ```
 
 ## Project Structure
 
 ```text
 polished/
+  HOW_TO_OPEN_POLISHED.md
+  POLISHED_CHAT_SUMMARY.md
   index.html
   src/
     App.jsx
