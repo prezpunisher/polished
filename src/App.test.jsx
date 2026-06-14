@@ -143,7 +143,7 @@ describe("App", () => {
     await user.click(screen.getByRole("button", { name: "Share note" }));
 
     expect(screen.getAllByText("@alex").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Outbound").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Shared by you").length).toBeGreaterThan(0);
     expect(screen.getByText("Collaborators")).toBeInTheDocument();
   });
 
@@ -161,13 +161,13 @@ describe("App", () => {
     expect(within(notesList).getAllByText("Weekly priorities").length).toBeGreaterThan(0);
     expect(within(notesList).queryByText("Reading list")).not.toBeInTheDocument();
 
-    await user.click(within(navigation).getByRole("button", { name: /^Inbound/ }));
-    expect(screen.getByRole("heading", { name: "Inbound notes" })).toBeInTheDocument();
+    await user.click(within(navigation).getByRole("button", { name: /^Shared to you/ }));
+    expect(screen.getByRole("heading", { name: "Shared to you" })).toBeInTheDocument();
     expect(within(notesList).getAllByText("Weekly priorities").length).toBeGreaterThan(0);
     expect(within(notesList).queryByText("Design the notes surface")).not.toBeInTheDocument();
 
-    await user.click(within(navigation).getByRole("button", { name: /^Outbound/ }));
-    expect(screen.getByRole("heading", { name: "Outbound notes" })).toBeInTheDocument();
+    await user.click(within(navigation).getByRole("button", { name: /^Shared by you/ }));
+    expect(screen.getByRole("heading", { name: "Shared by you" })).toBeInTheDocument();
     expect(within(notesList).getAllByText("Design the notes surface").length).toBeGreaterThan(0);
     expect(within(notesList).queryByText("Weekly priorities")).not.toBeInTheDocument();
   });

@@ -390,8 +390,8 @@ function getViewLabel(view, folders) {
     pinned: "Pinned notes",
     favorites: "Favorites",
     shared: "Shared notes",
-    inbound: "Inbound notes",
-    outbound: "Outbound notes",
+    inbound: "Shared to you",
+    outbound: "Shared by you",
     archive: "Archive",
     trash: "Trash"
   };
@@ -421,11 +421,11 @@ function getSearchScopeLabel(note) {
 
 function getShareLabel(note) {
   if (note.shareDirection === "inbound") {
-    return "Inbound";
+    return "Shared to you";
   }
 
   if (note.shareDirection === "outbound") {
-    return "Outbound";
+    return "Shared by you";
   }
 
   return note.collaborators.length > 0 ? "Shared" : "Private";
@@ -1341,7 +1341,7 @@ export default function App() {
                     className={`nav-item ${activeView.kind === "inbound" ? "active" : ""}`}
                     onClick={() => handleSelectView({ kind: "inbound" })}
                   >
-                    <span>Inbound</span>
+                    <span>Shared to you</span>
                     <strong>{noteCounts.inbound}</strong>
                   </button>
                   <button
@@ -1349,7 +1349,7 @@ export default function App() {
                     className={`nav-item ${activeView.kind === "outbound" ? "active" : ""}`}
                     onClick={() => handleSelectView({ kind: "outbound" })}
                   >
-                    <span>Outbound</span>
+                    <span>Shared by you</span>
                     <strong>{noteCounts.outbound}</strong>
                   </button>
                 </div>
@@ -1403,8 +1403,8 @@ export default function App() {
                 ) : ["shared", "inbound", "outbound"].includes(activeView.kind) ? (
                   <>
                     <span>{noteCounts.shared} shared notes</span>
-                    <span>{noteCounts.outbound} outbound</span>
-                    <span>{noteCounts.inbound} inbound</span>
+                    <span>{noteCounts.outbound} shared by you</span>
+                    <span>{noteCounts.inbound} shared to you</span>
                   </>
                 ) : (
                   <>
