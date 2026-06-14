@@ -1,4 +1,5 @@
 {
+  "name": "polished",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

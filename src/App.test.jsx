@@ -1,84 +1,54 @@
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import App from "./App";
 
-const dallasPlace = {
-  name: "Dallas",
-  admin1: "Texas",
-  country: "United States",
-  latitude: 32.78306,
-  longitude: -96.80667
-};
+function mockStorage(initialValue = null) {
+  const store = new Map();
 
-const londonPlace = {
-  name: "London",
-  admin1: "England",
-  country: "United Kingdom",
-  latitude: 51.50853,
-  longitude: -0.12574
-};
+  if (initialValue) {
+    store.set("polished-notes-app", JSON.stringify(initialValue));
+  }
 
-function makeWeatherData(overrides = {}) {
-  return {
-    current: {
-      time: "2026-05-09T14:00",
-      temperature_2m: 72.4,
-      apparent_temperature: 74.1,
-      relative_humidity_2m: 45,
-      weather_code: 1,
-      wind_speed_10m: 8.2,
-      is_day: 1,
-      ...overrides.current
-    },
-    daily: {
-      time: [
-        "2026-05-09",
-        "2026-05-10",
-        "2026-05-11",
-        "2026-05-12",
-        "2026-05-13",
-        "2026-05-14",
-        "2026-05-15"
-      ],
-      weather_code: [1, 2, 3, 61, 80, 0, 95],
-      temperature_2m_max: [74, 76, 75, 72, 73, 80, 79],
-      temperature_2m_min: [61, 62, 60, 58, 59, 64, 66],
-      cloud_cover_mean: [22, 44, 80, 68, 57, 12, 91],
-      precipitation_probability_max: [10, 20, 30, 60, 50, 0, 70],
-      ...overrides.daily
-    },
-    hourly: {
-      time: Array.from({ length: 24 }, (_, index) => {
-        return `2026-05-${String(9 + Math.floor(index / 24)).padStart(2, "0")}T${String(index).padStart(2, "0")}:00`;
-      }),
-      weather_code: Array.from({ length: 24 }, (_, index) => [1, 2, 3, 61][index % 4]),
-      temperature_2m: Array.from({ length: 24 }, (_, index) => 65 + (index % 8)),
-      precipitation_probability: Array.from({ length: 24 }, (_, index) => (index % 6) * 10),
-      ...overrides.hourly
-    }
+  const localStorage = {
+    getItem: vi.fn((key) => store.get(key) ?? null),
+    setItem: vi.fn((key, value) => {
+      store.set(key, value);
+    }),
+    removeItem: vi.fn((key) => {
+      store.delete(key);
+    }),
+    clear: vi.fn(() => {
+      store.clear();
+    })
   };
-}
 
-function jsonResponse(data, ok = true) {
-  return {
-    ok,
-    json: vi.fn().mockResolvedValue(data)
-  };
-}
-
-function mockSuccessfulWeatherFetch(place = dallasPlace, weather = makeWeatherData()) {
-  fetch.mockResolvedValueOnce(jsonResponse({ results: [place] }));
-  fetch.mockResolvedValueOnce(jsonResponse(weather));
+  Object.defineProperty(window, "localStorage", {
+    configurable: true,
+    value: localStorage
+  });
 }
 
 describe("App", () => {
   beforeEach(() => {
-    global.fetch = vi.fn();
+    mockStorage();
     Object.defineProperty(window, "scrollY", {
       configurable: true,
       value: 0
+    });
+    Object.defineProperty(window, "crypto", {
+      configurable: true,
+      value: {
+        randomUUID: vi.fn(() => "note-new")
+      }
+    });
+    Object.defineProperty(window, "requestAnimationFrame", {
+      configurable: true,
+      value: (callback) => {
+        callback();
+        return 0;
+      }
     });
   });
 
@@ -86,208 +56,265 @@ describe("App", () => {
     vi.restoreAllMocks();
   });
 
-  it("loads Dallas weather by default", async () => {
-    mockSuccessfulWeatherFetch();
-
+  it("loads the polished note workspace", () => {
     render(<App />);
 
-    expect(screen.getByText("Loading the latest forecast...")).toBeInTheDocument();
-    expect(await screen.findByRole("region", { name: "Current weather for Dallas, Texas" })).toBeInTheDocument();
-    expect(screen.getAllByText("Mainly clear").length).toBeGreaterThan(0);
-    expect(screen.getByRole("heading", { name: "72°" })).toBeInTheDocument();
-    expect(screen.getByRole("region", { name: "7-day forecast" })).toBeInTheDocument();
-    expect(screen.getByRole("region", { name: "24-hour forecast" })).toBeInTheDocument();
-    expect(screen.getByRole("region", { name: "Weather alerts" })).toHaveTextContent("No active alerts");
-    expect(fetch.mock.calls[1][0]).toContain("is_day");
-    expect(fetch.mock.calls[1][0]).toContain("cloud_cover_mean");
-  });
+    expect(screen.getByRole("heading", { name: "polished" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "All notes" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "All notes" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Title")).toHaveValue("Design the notes surface");
+    expect(screen.getByLabelText("Body")).toHaveValue(
+      "# Layout direction\n\nKeep the interface editorial and calm.\n\n- Left navigation for organization\n- Center list for fast scanning\n- Right editor for focused writing"
+    );
+    expect(screen.getByRole("button", { name: "Remove tag design" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Remove tag ui" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Remove tag product" })).toBeInTheDocument();
 
-  it("renders only implemented buttons", async () => {
-    mockSuccessfulWeatherFetch();
+    const preview = screen.getByLabelText("Markdown preview");
+    expect(within(preview).getByRole("heading", { name: "Layout direction", level: 3 })).toBeInTheDocument();
+    expect(within(preview).getByText("Left navigation for organization")).toBeInTheDocument();
 
-    render(<App />);
-
-    await screen.findByRole("region", { name: "Current weather for Dallas, Texas" });
-
-    expect(screen.getAllByRole("button")).toHaveLength(2);
-    expect(screen.getByRole("button", { name: "Search weather" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Note statistics")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Switch to dark mode" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Location list" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Open location in another app" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Edit location options" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "New note" })).toBeInTheDocument();
+    expect(screen.getAllByText("@maya").length).toBeGreaterThan(0);
   });
 
-  it("toggles between dark and light mode", async () => {
+  it("creates a note and keeps it editable", async () => {
     const user = userEvent.setup();
-    mockSuccessfulWeatherFetch();
 
-    const { container } = render(<App />);
+    render(<App />);
 
-    await screen.findByRole("region", { name: "Current weather for Dallas, Texas" });
+    await user.click(screen.getByRole("button", { name: "New note" }));
 
-    const app = container.querySelector(".app");
-    const themeButton = screen.getByRole("button", { name: "Switch to dark mode" });
+    expect(screen.getByLabelText("Title")).toHaveValue("Untitled note");
+    expect(screen.getByLabelText("Body")).toHaveValue("");
+    expect(screen.getByLabelText("Tags")).toBeInTheDocument();
 
-    expect(app).toHaveClass("light-theme");
-    expect(themeButton).toHaveTextContent("☀");
-    expect(themeButton).toHaveAttribute("aria-pressed", "true");
-
-    await user.click(themeButton);
-
-    expect(app).toHaveClass("dark-theme");
-    expect(screen.getByRole("button", { name: "Switch to light mode" })).toHaveTextContent("☾");
-    expect(screen.getByRole("button", { name: "Switch to light mode" })).toHaveAttribute("aria-pressed", "false");
+    await user.clear(screen.getByLabelText("Title"));
+    await user.type(screen.getByLabelText("Title"), "Meeting notes");
+    expect(screen.getByLabelText("Title")).toHaveValue("Meeting notes");
+    expect(screen.getAllByText("Meeting notes").length).toBeGreaterThan(0);
   });
 
-  it("uses nighttime weather data for the default theme and current clear icon", async () => {
-    mockSuccessfulWeatherFetch(
-      dallasPlace,
-      makeWeatherData({
-        current: {
-          weather_code: 0,
-          is_day: 0
-        }
-      })
+  it("auto-generates a title from the note body", async () => {
+    const user = userEvent.setup();
+
+    render(<App />);
+
+    await user.click(screen.getByRole("button", { name: "New note" }));
+    await user.type(
+      screen.getByLabelText("Body"),
+      "Quarterly roadmap review with finance and platform leads"
     );
 
-    const { container } = render(<App />);
-
-    await screen.findByRole("region", { name: "Current weather for Dallas, Texas" });
-
-    expect(container.querySelector(".app")).toHaveClass("dark-theme");
-    expect(screen.getByRole("img", { name: "Clear sky" })).toHaveTextContent("🌙");
-    expect(screen.getByRole("button", { name: "Switch to light mode" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Title")).toHaveValue(
+      "Quarterly roadmap review with finance and platform leads"
+    );
   });
 
-  it("moves the next 24 hours above details and keeps daily forecast simple", async () => {
-    mockSuccessfulWeatherFetch();
+  it("keeps a manual title after the body changes", async () => {
+    const user = userEvent.setup();
 
     render(<App />);
 
-    await screen.findByRole("region", { name: "Current weather for Dallas, Texas" });
+    await user.click(screen.getByRole("button", { name: "New note" }));
+    await user.clear(screen.getByLabelText("Title"));
+    await user.type(screen.getByLabelText("Title"), "Team sync");
+    await user.type(screen.getByLabelText("Body"), "We covered budgets and open hiring.");
 
-    const hourlyForecast = screen.getByRole("region", { name: "24-hour forecast" });
-    const details = screen.getByRole("complementary", { name: "Weather details" });
-    const dailyForecast = screen.getByRole("region", { name: "7-day forecast" });
-
-    expect(hourlyForecast.compareDocumentPosition(details)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
-    expect(within(dailyForecast).getByRole("heading", { name: "Daily outlook" })).toBeInTheDocument();
-    expect(within(dailyForecast).getAllByText("Overcast")).toHaveLength(7);
-    expect(within(dailyForecast).getByText("22%")).toBeInTheDocument();
-    expect(dailyForecast.querySelector(".forecast-icon")).not.toBeInTheDocument();
-    expect(dailyForecast.querySelector(".temp-bars")).not.toBeInTheDocument();
-    expect(within(dailyForecast).queryByText("Mainly clear")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Title")).toHaveValue("Team sync");
   });
 
-  it("does not show last refresh time in the app bar", async () => {
-    mockSuccessfulWeatherFetch();
+  it("renders fenced code blocks in the markdown preview", async () => {
+    render(<App />);
+
+    fireEvent.change(screen.getByLabelText("Body"), {
+      target: {
+        value: '```json\n{\n  "name": "demo",\n  "enabled": true\n}\n```'
+      }
+    });
+
+    const preview = screen.getByLabelText("Markdown preview");
+    expect(within(preview).getByText("json")).toBeInTheDocument();
+    expect(within(preview).getByText(/"name": "demo"/)).toBeInTheDocument();
+    expect(within(preview).getByText(/"enabled": true/)).toBeInTheDocument();
+  });
+
+  it("inserts a json code block from the editor tools", async () => {
+    const user = userEvent.setup();
 
     render(<App />);
 
-    await screen.findByRole("region", { name: "Current weather for Dallas, Texas" });
+    await user.selectOptions(screen.getByLabelText("Code block language"), "json");
+    await user.click(screen.getByRole("button", { name: "Insert code block" }));
 
-    expect(screen.queryByText(/Last refresh/i)).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Body").value).toContain("```json");
+
+    const preview = screen.getByLabelText("Markdown preview");
+    expect(within(preview).getByText("json")).toBeInTheDocument();
   });
 
-  it("compacts the app bar when the user scrolls down", async () => {
-    mockSuccessfulWeatherFetch();
+  it("adds a collaborator handle and marks the note as shared", async () => {
+    const user = userEvent.setup();
 
-    const { container } = render(<App />);
+    render(<App />);
 
-    await screen.findByRole("region", { name: "Current weather for Dallas, Texas" });
+    await user.clear(screen.getByLabelText("Collaborator handle"));
+    await user.type(screen.getByLabelText("Collaborator handle"), "@alex");
+    await user.click(screen.getByRole("button", { name: "Share note" }));
 
-    const appBar = container.querySelector(".app-bar");
+    expect(screen.getAllByText("@alex").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Outbound").length).toBeGreaterThan(0);
+    expect(screen.getByText("3 collaborators")).toBeInTheDocument();
+  });
 
-    expect(appBar).not.toHaveClass("compact");
+  it("shows inbound and outbound collaboration notes in the collaboration filters", async () => {
+    const user = userEvent.setup();
+
+    render(<App />);
+
+    const navigation = screen.getByRole("navigation", { name: "Navigation" });
+    await user.click(within(navigation).getByRole("button", { name: /All shared/ }));
+
+    expect(screen.getByRole("heading", { name: "Shared notes" })).toBeInTheDocument();
+    expect(screen.getAllByText("Design the notes surface").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Weekly priorities").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Reading list")).not.toBeInTheDocument();
+    expect(screen.getAllByText("Outbound").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Inbound").length).toBeGreaterThan(0);
+
+    await user.click(within(navigation).getByRole("button", { name: /^Inbound/ }));
+    expect(screen.getByRole("heading", { name: "Inbound notes" })).toBeInTheDocument();
+    expect(screen.getAllByText("Weekly priorities").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Design the notes surface")).not.toBeInTheDocument();
+
+    await user.click(within(navigation).getByRole("button", { name: /^Outbound/ }));
+    expect(screen.getByRole("heading", { name: "Outbound notes" })).toBeInTheDocument();
+    expect(screen.getAllByText("Design the notes surface").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Weekly priorities")).not.toBeInTheDocument();
+  });
+
+  it("adds tags as removable chips without relying on comma parsing", async () => {
+    const user = userEvent.setup();
+
+    render(<App />);
+
+    await user.clear(screen.getByLabelText("Tag name"));
+    await user.type(screen.getByLabelText("Tag name"), "meeting-notes,");
+
+    expect(screen.getByRole("button", { name: "Remove tag meeting-notes" })).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText("Tag name"), "followup");
+    await user.click(screen.getByRole("button", { name: "Add tag" }));
+
+    expect(screen.getByRole("button", { name: "Remove tag followup" })).toBeInTheDocument();
+  });
+
+  it("filters notes by search query", async () => {
+    const user = userEvent.setup();
+
+    render(<App />);
+
+    await user.type(screen.getByLabelText("Search notes"), "reading");
+
+    expect(screen.getAllByText("Reading list").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Weekly priorities")).not.toBeInTheDocument();
+    const notesList = within(screen.getByLabelText("Notes list")).getByRole("list");
+    expect(within(notesList).getAllByRole("listitem")).toHaveLength(1);
+  });
+
+  it("searches across the whole workspace regardless of the current view", async () => {
+    const user = userEvent.setup();
+
+    render(<App />);
+
+    const navigation = screen.getByRole("navigation", { name: "Navigation" });
+    await user.click(within(navigation).getByRole("button", { name: /Archive/ }));
+    await user.type(screen.getByLabelText("Search notes"), "weekly");
+
+    expect(screen.getByRole("heading", { name: "Search results" })).toBeInTheDocument();
+    expect(screen.getAllByText("Weekly priorities").length).toBeGreaterThan(0);
+    expect(screen.getByText("Across workspace")).toBeInTheDocument();
+  });
+
+  it("switches between organization views and restores archived notes", async () => {
+    const user = userEvent.setup();
+
+    render(<App />);
+
+    await user.click(screen.getByText("Weekly priorities"));
+    await user.click(screen.getByRole("button", { name: "Archive" }));
+
+    const navigation = screen.getByRole("navigation", { name: "Navigation" });
+    await user.click(within(navigation).getByRole("button", { name: /Archive/ }));
+
+    expect(screen.getAllByText("Weekly priorities").length).toBeGreaterThan(0);
+    expect(screen.getByRole("button", { name: "Unarchive" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Unarchive" }));
+    await user.click(within(navigation).getByRole("button", { name: /All notes/ }));
+    expect(screen.queryByRole("button", { name: "Unarchive" })).not.toBeInTheDocument();
+  });
+
+  it("moves a note to trash and restores it", async () => {
+    const user = userEvent.setup();
+
+    render(<App />);
+
+    await user.click(screen.getByText("Weekly priorities"));
+    await user.click(screen.getByRole("button", { name: "Move to trash" }));
+
+    const navigation = screen.getByRole("navigation", { name: "Navigation" });
+    await user.click(within(navigation).getByRole("button", { name: /Trash/ }));
+    expect(screen.getAllByText("Weekly priorities").length).toBeGreaterThan(0);
+
+    const editor = screen.getByLabelText("Note editor");
+    await user.click(within(editor).getByRole("button", { name: /^Restore$/ }));
+    expect(within(editor).queryByRole("button", { name: "Restore" })).not.toBeInTheDocument();
+  });
+
+  it("stores restore points and can roll back to an earlier version", async () => {
+    render(<App />);
+
+    const title = screen.getByLabelText("Title");
+    const body = screen.getByLabelText("Body");
+
+    fireEvent.change(title, { target: { value: "Changed title" } });
+    fireEvent.change(body, { target: { value: "Temporary meeting notes" } });
+
+    expect(screen.getByLabelText("Autosave status")).toBeInTheDocument();
+    const history = screen.getByLabelText("Version history");
+    expect(history).toBeInTheDocument();
+    const restoreButtons = within(history).getAllByRole("button", { name: /Restore version from/ });
+    fireEvent.click(restoreButtons[restoreButtons.length - 1]);
+
+    expect(screen.getByLabelText("Title")).toHaveValue("Design the notes surface");
+    expect(screen.getByLabelText("Body")).toHaveValue(
+      "# Layout direction\n\nKeep the interface editorial and calm.\n\n- Left navigation for organization\n- Center list for fast scanning\n- Right editor for focused writing"
+    );
+  });
+
+  it("toggles the compact top bar on scroll and responds to shortcuts", async () => {
+    const user = userEvent.setup();
+
+    render(<App />);
+
+    const topbar = document.querySelector(".topbar");
+    expect(topbar).not.toHaveClass("compact");
 
     Object.defineProperty(window, "scrollY", {
       configurable: true,
       value: 120
     });
+
     act(() => {
       window.dispatchEvent(new Event("scroll"));
     });
 
-    expect(appBar).toHaveClass("compact");
-    expect(screen.queryByRole("button", { name: "Search weather" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Switch to/i })).not.toBeInTheDocument();
-    expect(within(appBar).getByText("Dallas, Texas")).toBeInTheDocument();
+    expect(document.querySelector(".topbar")).toHaveClass("compact");
 
-    Object.defineProperty(window, "scrollY", {
-      configurable: true,
-      value: 0
-    });
-    act(() => {
-      window.dispatchEvent(new Event("scroll"));
-    });
-
-    expect(appBar).not.toHaveClass("compact");
-    expect(screen.getByRole("button", { name: "Search weather" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Switch to dark mode" })).toBeInTheDocument();
-  });
-
-  it("searches another city and renders the returned forecast", async () => {
-    const user = userEvent.setup();
-    mockSuccessfulWeatherFetch();
-    mockSuccessfulWeatherFetch(
-      londonPlace,
-      makeWeatherData({
-        current: {
-          temperature_2m: 58.8,
-          apparent_temperature: 57.1,
-          relative_humidity_2m: 71,
-          weather_code: 61,
-          wind_speed_10m: 12
-        },
-        daily: {
-          precipitation_probability_max: [65, 40, 25, 20, 15, 10, 5]
-        }
-      })
-    );
-
-    render(<App />);
-
-    await screen.findByRole("region", { name: "Current weather for Dallas, Texas" });
-
-    await user.clear(screen.getByLabelText("Search city"));
-    await user.type(screen.getByLabelText("Search city"), "London");
-    await user.click(screen.getByRole("button", { name: "Search weather" }));
-
-    expect(await screen.findByRole("region", { name: "Current weather for London, England" })).toBeInTheDocument();
-    expect(screen.getAllByText("Slight rain").length).toBeGreaterThan(0);
-    expect(screen.getByRole("heading", { name: "59°" })).toBeInTheDocument();
-    expect(within(screen.getByLabelText("Weather details")).getByText("71%")).toBeInTheDocument();
-  });
-
-  it("shows a validation message for an empty search", async () => {
-    const user = userEvent.setup();
-    mockSuccessfulWeatherFetch();
-
-    render(<App />);
-
-    await screen.findByRole("region", { name: "Current weather for Dallas, Texas" });
-
-    await user.clear(screen.getByLabelText("Search city"));
-    await user.click(screen.getByRole("button", { name: "Search weather" }));
-
-    expect(screen.getByRole("alert")).toHaveTextContent("Enter a city to search.");
-    expect(screen.queryByText("Dallas, Texas")).not.toBeInTheDocument();
-  });
-
-  it("shows an error when a city cannot be found", async () => {
-    const user = userEvent.setup();
-    mockSuccessfulWeatherFetch();
-    fetch.mockResolvedValueOnce(jsonResponse({ results: [] }));
-
-    render(<App />);
-
-    await screen.findByRole("region", { name: "Current weather for Dallas, Texas" });
-
-    await user.clear(screen.getByLabelText("Search city"));
-    await user.type(screen.getByLabelText("Search city"), "Nopeville");
-    await user.click(screen.getByRole("button", { name: "Search weather" }));
-
-    expect(await screen.findByRole("alert")).toHaveTextContent("City not found. Try another city.");
-    expect(screen.queryByText("Dallas, Texas")).not.toBeInTheDocument();
+    await user.keyboard("{Control>}n{/Control}");
+    expect(screen.getByLabelText("Title")).toHaveValue("Untitled note");
   });
 });

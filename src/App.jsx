@@ -1,299 +1,1550 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { formatDate, formatLocation, getCondition } from "./weather";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import "./style.css";
 
+const STORAGE_KEY = "polished-notes-app";
+const MAX_NOTE_VERSIONS = 20;
+
+const folderSeed = [
+  { id: "folder-work", name: "Work", color: "sky" },
+  { id: "folder-personal", name: "Personal", color: "rose" },
+  { id: "folder-ideas", name: "Ideas", color: "amber" },
+  { id: "folder-reference", name: "Reference", color: "violet" }
+];
+
+const colorOptions = [
+  { value: "amber", label: "Amber", swatch: "#f1b879" },
+  { value: "rose", label: "Rose", swatch: "#f28b9e" },
+  { value: "jade", label: "Jade", swatch: "#69d3b0" },
+  { value: "sky", label: "Sky", swatch: "#7fb7ff" },
+  { value: "violet", label: "Violet", swatch: "#b59bff" }
+];
+
+const seedNotes = [
+  {
+    id: "note-1",
+    title: "Design the notes surface",
+    content:
+      "# Layout direction\n\nKeep the interface editorial and calm.\n\n- Left navigation for organization\n- Center list for fast scanning\n- Right editor for focused writing",
+    tags: ["design", "ui", "product"],
+    collaborators: ["@maya", "@leo"],
+    shareDirection: "outbound",
+    folderId: "folder-ideas",
+    isPinned: true,
+    isFavorite: true,
+    color: "amber",
+    createdAt: "2026-06-11T08:30:00.000Z",
+    updatedAt: "2026-06-13T08:40:00.000Z",
+    versions: [
+      {
+        id: "note-1-version-1",
+        savedAt: "2026-06-13T08:40:00.000Z",
+        title: "Design the notes surface",
+        content:
+          "# Layout direction\n\nKeep the interface editorial and calm.\n\n- Left navigation for organization\n- Center list for fast scanning\n- Right editor for focused writing",
+        tags: ["design", "ui", "product"],
+        collaborators: ["@maya", "@leo"],
+        folderId: "folder-ideas",
+        color: "amber"
+      }
+    ]
+  },
+  {
+    id: "note-2",
+    title: "Weekly priorities",
+    content:
+      "Ship the layout polish, tighten the onboarding copy, and review the first usage data after release.",
+    tags: ["work", "planning"],
+    collaborators: ["@finance_ops"],
+    shareDirection: "inbound",
+    folderId: "folder-work",
+    isFavorite: false,
+    color: "sky",
+    createdAt: "2026-06-10T12:15:00.000Z",
+    updatedAt: "2026-06-12T19:15:00.000Z",
+    versions: [
+      {
+        id: "note-2-version-1",
+        savedAt: "2026-06-12T19:15:00.000Z",
+        title: "Weekly priorities",
+        content:
+          "Ship the layout polish, tighten the onboarding copy, and review the first usage data after release.",
+        tags: ["work", "planning"],
+        collaborators: ["@finance_ops"],
+        folderId: "folder-work",
+        color: "sky"
+      }
+    ]
+  },
+  {
+    id: "note-3",
+    title: "Reading list",
+    content:
+      "Collect articles on typography, interaction states, and strong empty states.\n\n- Keep the best takeaways\n- Turn them into small product decisions",
+    tags: ["reading", "ideas"],
+    folderId: "folder-reference",
+    color: "violet",
+    createdAt: "2026-06-09T10:20:00.000Z",
+    updatedAt: "2026-06-11T16:20:00.000Z",
+    versions: [
+      {
+        id: "note-3-version-1",
+        savedAt: "2026-06-11T16:20:00.000Z",
+        title: "Reading list",
+        content:
+          "Collect articles on typography, interaction states, and strong empty states.\n\n- Keep the best takeaways\n- Turn them into small product decisions",
+        tags: ["reading", "ideas"],
+        collaborators: [],
+        folderId: "folder-reference",
+        color: "violet"
+      }
+    ]
+  }
+];
+
+function nowIso() {
+  return new Date().toISOString();
+}
+
+function createId() {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+
+  return `note-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function normalizeFolder(folder, fallbackIndex = 0) {
+  return {
+    id: folder.id || `folder-${fallbackIndex}`,
+    name: folder.name || "Folder",
+    color: folder.color || "amber"
+  };
+}
+
+function normalizeHandle(value) {
+  const cleanedValue = value.trim().replace(/^@+/, "").replace(/\s+/g, "_").toLowerCase();
+
+  return cleanedValue ? `@${cleanedValue}` : "";
+}
+
+function normalizeTagValue(value) {
+  return value.trim().replace(/^#+/, "").replace(/\s+/g, "-").toLowerCase();
+}
+
+function normalizeNote(note, folders = folderSeed) {
+  const fallbackFolderId = folders[0]?.id || "folder-default";
+  const legacyPinned = note.pinned ?? note.isPinned;
+  const hasExplicitAutoFlag = typeof note.isTitleAuto === "boolean";
+  const normalizedTitle = note.title || "Untitled note";
+
+  return {
+    id: note.id || createId(),
+    title: normalizedTitle,
+    content: note.content || "",
+    tags: Array.isArray(note.tags) ? note.tags.map((tag) => String(tag).trim()).filter(Boolean) : [],
+    collaborators: Array.isArray(note.collaborators)
+      ? note.collaborators.map((handle) => normalizeHandle(String(handle))).filter(Boolean)
+      : [],
+    shareDirection: note.shareDirection === "inbound" ? "inbound" : note.shareDirection === "outbound" ? "outbound" : null,
+    folderId: note.folderId || fallbackFolderId,
+    isPinned: Boolean(legacyPinned),
+    isFavorite: Boolean(note.isFavorite),
+    isArchived: Boolean(note.isArchived),
+    isDeleted: Boolean(note.isDeleted),
+    isTitleAuto: hasExplicitAutoFlag ? note.isTitleAuto : normalizedTitle === "Untitled note",
+    color: note.color || "amber",
+    versions: Array.isArray(note.versions)
+      ? note.versions.map((version, index) => ({
+          id: version.id || `${note.id || "note"}-version-${index}`,
+          savedAt: version.savedAt || note.updatedAt || nowIso(),
+          title: version.title || normalizedTitle,
+          content: version.content || "",
+          tags: Array.isArray(version.tags) ? version.tags : [],
+          collaborators: Array.isArray(version.collaborators)
+            ? version.collaborators.map((handle) => normalizeHandle(String(handle))).filter(Boolean)
+            : [],
+          folderId: version.folderId || fallbackFolderId,
+          color: version.color || note.color || "amber"
+        }))
+      : [],
+    createdAt: note.createdAt || nowIso(),
+    updatedAt: note.updatedAt || nowIso()
+  };
+}
+
+function normalizeView(view) {
+  if (!view || typeof view !== "object") {
+    return { kind: "all" };
+  }
+
+  if (view.kind === "folder" && typeof view.id === "string") {
+    return { kind: "folder", id: view.id };
+  }
+
+  if (
+    ["all", "pinned", "favorites", "shared", "inbound", "outbound", "archive", "trash"].includes(
+      view.kind
+    )
+  ) {
+    return { kind: view.kind };
+  }
+
+  return { kind: "all" };
+}
+
+function createDefaultState() {
+  const notes = seedNotes.map((note) => normalizeNote(note));
+
+  return {
+    theme: "light",
+    activeView: { kind: "all" },
+    activeId: notes[0]?.id ?? null,
+    folders: folderSeed.map(normalizeFolder),
+    notes
+  };
+}
+
+function loadAppState() {
+  if (typeof window === "undefined") {
+    return createDefaultState();
+  }
+
+  try {
+    const stored = window.localStorage.getItem(STORAGE_KEY);
+
+    if (!stored) {
+      return createDefaultState();
+    }
+
+    const parsed = JSON.parse(stored);
+
+    if (Array.isArray(parsed)) {
+      const notes = parsed.map((note) => normalizeNote(note));
+
+      return {
+        ...createDefaultState(),
+        notes,
+        activeId: notes[0]?.id ?? null
+      };
+    }
+
+    if (parsed && typeof parsed === "object") {
+      const folders = Array.isArray(parsed.folders)
+        ? parsed.folders.map((folder, index) => normalizeFolder(folder, index))
+        : folderSeed.map(normalizeFolder);
+      const notes = Array.isArray(parsed.notes)
+        ? parsed.notes.map((note) => normalizeNote(note, folders))
+        : createDefaultState().notes;
+
+      return {
+        theme: parsed.theme === "dark" ? "dark" : "light",
+        activeView: normalizeView(parsed.activeView),
+        activeId: typeof parsed.activeId === "string" ? parsed.activeId : notes[0]?.id ?? null,
+        folders,
+        notes
+      };
+    }
+  } catch {
+    return createDefaultState();
+  }
+
+  return createDefaultState();
+}
+
+function sortNotes(notes, viewKind = "all") {
+  return [...notes].sort((a, b) => {
+    if (viewKind !== "trash") {
+      if (a.isPinned !== b.isPinned) {
+        return a.isPinned ? -1 : 1;
+      }
+
+      if (a.isFavorite !== b.isFavorite) {
+        return a.isFavorite ? -1 : 1;
+      }
+    }
+
+    return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+  });
+}
+
+function formatDateTime(value) {
+  return new Date(value).toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit"
+  });
+}
+
+function previewText(note) {
+  const text = note.content.trim().replace(/\s+/g, " ");
+
+  if (!text) {
+    return "Start writing something.";
+  }
+
+  return text.length > 120 ? `${text.slice(0, 120)}...` : text;
+}
+
+function stripInlineMarkdown(text) {
+  return text
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, "$1")
+    .replace(/\*\*([^*]+)\*\*/g, "$1")
+    .replace(/\*([^*]+)\*/g, "$1")
+    .replace(/^#{1,6}\s+/g, "")
+    .replace(/^[-*]\s+/g, "")
+    .trim();
+}
+
+function deriveTitleFromContent(content) {
+  const trimmedContent = content.trim();
+
+  if (!trimmedContent) {
+    return "Untitled note";
+  }
+
+  const codeFenceMatch = trimmedContent.match(/^```([a-z0-9_-]+)?/im);
+  if (codeFenceMatch && trimmedContent.replace(/```/g, "").trim().split("\n").length <= 6) {
+    const language = codeFenceMatch[1]?.toUpperCase() || "Code";
+    return `${language} snippet`;
+  }
+
+  const lines = trimmedContent
+    .split("\n")
+    .map((line) => stripInlineMarkdown(line))
+    .filter(Boolean);
+
+  const firstMeaningfulLine = lines.find((line) => !/^```/.test(line));
+  if (!firstMeaningfulLine) {
+    return "Untitled note";
+  }
+
+  return firstMeaningfulLine.length > 68
+    ? `${firstMeaningfulLine.slice(0, 68).trimEnd()}...`
+    : firstMeaningfulLine;
+}
+
+function matchesQuery(note, query) {
+  if (!query) {
+    return true;
+  }
+
+  const target = [note.title, note.content, note.tags.join(" ")].join(" ").toLowerCase();
+  return target.includes(query);
+}
+
+function filterNotes(notes, view) {
+  return notes.filter((note) => {
+    if (view.kind === "trash") {
+      return note.isDeleted;
+    }
+
+    if (note.isDeleted) {
+      return false;
+    }
+
+    if (view.kind === "archive") {
+      return note.isArchived;
+    }
+
+    if (note.isArchived) {
+      return false;
+    }
+
+    if (view.kind === "pinned") {
+      return note.isPinned;
+    }
+
+    if (view.kind === "favorites") {
+      return note.isFavorite;
+    }
+
+    if (view.kind === "shared") {
+      return note.collaborators.length > 0;
+    }
+
+    if (view.kind === "inbound") {
+      return note.collaborators.length > 0 && note.shareDirection === "inbound";
+    }
+
+    if (view.kind === "outbound") {
+      return note.collaborators.length > 0 && note.shareDirection !== "inbound";
+    }
+
+    if (view.kind === "folder") {
+      return note.folderId === view.id;
+    }
+
+    return true;
+  });
+}
+
+function getViewLabel(view, folders) {
+  if (view.kind === "folder") {
+    return folders.find((folder) => folder.id === view.id)?.name || "Folder";
+  }
+
+  const labels = {
+    all: "All notes",
+    pinned: "Pinned notes",
+    favorites: "Favorites",
+    shared: "Shared notes",
+    inbound: "Inbound notes",
+    outbound: "Outbound notes",
+    archive: "Archive",
+    trash: "Trash"
+  };
+
+  return labels[view.kind] || "All notes";
+}
+
+function getSearchScopeLabel(note) {
+  if (note.isDeleted) {
+    return "Trash";
+  }
+
+  if (note.isArchived) {
+    return "Archive";
+  }
+
+  if (note.isPinned) {
+    return "Pinned";
+  }
+
+  if (note.isFavorite) {
+    return "Favorites";
+  }
+
+  return "Active";
+}
+
+function getShareLabel(note) {
+  if (note.shareDirection === "inbound") {
+    return "Inbound";
+  }
+
+  if (note.shareDirection === "outbound") {
+    return "Outbound";
+  }
+
+  return note.collaborators.length > 0 ? "Shared" : "Private";
+}
+
+function createVersionSnapshot(note, savedAt) {
+  return {
+    id: `${note.id}-version-${savedAt}`,
+    savedAt,
+    title: note.title || "Untitled note",
+    content: note.content || "",
+    tags: note.tags || [],
+    collaborators: note.collaborators || [],
+    folderId: note.folderId,
+    color: note.color
+  };
+}
+
+function shouldStoreVersion(previousNote, nextNote) {
+  if (!previousNote) {
+    return true;
+  }
+
+  const contentChanged = previousNote.content !== nextNote.content;
+  const titleChanged = previousNote.title !== nextNote.title;
+  const tagsChanged = JSON.stringify(previousNote.tags) !== JSON.stringify(nextNote.tags);
+  const collaboratorsChanged =
+    JSON.stringify(previousNote.collaborators) !== JSON.stringify(nextNote.collaborators);
+  const folderChanged = previousNote.folderId !== nextNote.folderId;
+  const colorChanged = previousNote.color !== nextNote.color;
+
+  if (!contentChanged && !titleChanged && !tagsChanged && !collaboratorsChanged && !folderChanged && !colorChanged) {
+    return false;
+  }
+
+  const previousSnapshot = previousNote.versions?.[0];
+  if (!previousSnapshot) {
+    return true;
+  }
+
+  const elapsed = new Date(nextNote.updatedAt).getTime() - new Date(previousSnapshot.savedAt).getTime();
+  const contentDelta = Math.abs((nextNote.content || "").length - (previousNote.content || "").length);
+
+  return elapsed >= 60_000 || titleChanged || collaboratorsChanged || tagsChanged || folderChanged || colorChanged || contentDelta >= 120;
+}
+
+function parseInlineMarkdown(text, keyPrefix) {
+  const parts = [];
+  const pattern = /(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`|\[[^\]]+\]\([^)]+\))/g;
+  let lastIndex = 0;
+  let match;
+  let partIndex = 0;
+
+  while ((match = pattern.exec(text))) {
+    if (match.index > lastIndex) {
+      parts.push(text.slice(lastIndex, match.index));
+    }
+
+    const token = match[0];
+
+    if (token.startsWith("**")) {
+      parts.push(
+        <strong key={`${keyPrefix}-strong-${partIndex++}`}>{token.slice(2, -2)}</strong>
+      );
+    } else if (token.startsWith("*")) {
+      parts.push(<em key={`${keyPrefix}-em-${partIndex++}`}>{token.slice(1, -1)}</em>);
+    } else if (token.startsWith("`")) {
+      parts.push(<code key={`${keyPrefix}-code-${partIndex++}`}>{token.slice(1, -1)}</code>);
+    } else if (token.startsWith("[")) {
+      const linkMatch = token.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
+      if (linkMatch) {
+        parts.push(
+          <a key={`${keyPrefix}-link-${partIndex++}`} href={linkMatch[2]} target="_blank" rel="noreferrer">
+            {linkMatch[1]}
+          </a>
+        );
+      }
+    }
+
+    lastIndex = match.index + token.length;
+  }
+
+  if (lastIndex < text.length) {
+    parts.push(text.slice(lastIndex));
+  }
+
+  return parts.length > 0 ? parts : text;
+}
+
+function renderMarkdownPreview(content) {
+  const lines = content.split("\n");
+  const nodes = [];
+  let index = 0;
+
+  while (index < lines.length) {
+    const line = lines[index];
+
+    if (!line.trim()) {
+      nodes.push(<div key={`gap-${index}`} className="preview-gap" />);
+      index += 1;
+      continue;
+    }
+
+    if (/^```/.test(line.trim())) {
+      const language = line.trim().replace(/^```/, "").trim();
+      const codeLines = [];
+      index += 1;
+
+      while (index < lines.length && !/^```/.test(lines[index].trim())) {
+        codeLines.push(lines[index]);
+        index += 1;
+      }
+
+      if (index < lines.length && /^```/.test(lines[index].trim())) {
+        index += 1;
+      }
+
+      nodes.push(
+        <div key={`code-${index}`} className="preview-code-block">
+          {language && <div className="preview-code-label">{language}</div>}
+          <pre>
+            <code>{codeLines.join("\n")}</code>
+          </pre>
+        </div>
+      );
+      continue;
+    }
+
+    if (/^#{1,3}\s+/.test(line)) {
+      const level = line.match(/^#{1,3}/)[0].length;
+      const text = line.replace(/^#{1,3}\s+/, "");
+      const HeadingTag = level === 1 ? "h3" : level === 2 ? "h4" : "h5";
+      nodes.push(<HeadingTag key={`heading-${index}`}>{parseInlineMarkdown(text, `heading-${index}`)}</HeadingTag>);
+      index += 1;
+      continue;
+    }
+
+    if (/^[-*]\s+/.test(line)) {
+      const items = [];
+      while (index < lines.length && /^[-*]\s+/.test(lines[index])) {
+        items.push(lines[index].replace(/^[-*]\s+/, ""));
+        index += 1;
+      }
+
+      nodes.push(
+        <ul key={`list-${index}`} className="preview-list">
+          {items.map((item, itemIndex) => (
+            <li key={`item-${index}-${itemIndex}`}>{parseInlineMarkdown(item, `item-${index}-${itemIndex}`)}</li>
+          ))}
+        </ul>
+      );
+      continue;
+    }
+
+    const paragraph = [];
+    while (index < lines.length && lines[index].trim() && !/^#{1,3}\s+/.test(lines[index]) && !/^[-*]\s+/.test(lines[index])) {
+      paragraph.push(lines[index]);
+      index += 1;
+    }
+
+    nodes.push(
+      <p key={`paragraph-${index}`} className="preview-paragraph">
+        {parseInlineMarkdown(paragraph.join(" "), `paragraph-${index}`)}
+      </p>
+    );
+  }
+
+  return nodes;
+}
+
+function noteMatchesFolder(note, activeView) {
+  return activeView.kind === "folder" ? note.folderId === activeView.id : true;
+}
+
 export default function App() {
-  const [city, setCity] = useState("Dallas");
-  const [submittedCity, setSubmittedCity] = useState("Dallas");
-  const [weather, setWeather] = useState(null);
-  const [locationName, setLocationName] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [themePreference, setThemePreference] = useState("auto");
-  const [isBarCompact, setIsBarCompact] = useState(false);
+  const [appState, setAppState] = useState(loadAppState);
+  const [query, setQuery] = useState("");
+  const [isCompact, setIsCompact] = useState(false);
+  const [codeLanguage, setCodeLanguage] = useState("json");
+  const [collaboratorInput, setCollaboratorInput] = useState("");
+  const [tagInput, setTagInput] = useState("");
+  const searchRef = useRef(null);
+  const titleRef = useRef(null);
+  const bodyRef = useRef(null);
+
+  const { notes, folders, theme, activeView, activeId } = appState;
+
+  const folderMap = useMemo(() => {
+    return new Map(folders.map((folder) => [folder.id, folder]));
+  }, [folders]);
+
+  const visibleNotes = useMemo(() => {
+    const cleanedQuery = query.trim().toLowerCase();
+    const candidates = cleanedQuery
+      ? notes.filter((note) => matchesQuery(note, cleanedQuery))
+      : filterNotes(notes, activeView);
+
+    return sortNotes(candidates, cleanedQuery ? "search" : activeView.kind);
+  }, [activeView, notes, query]);
+
+  const activeNote = notes.find((note) => note.id === activeId) || visibleNotes[0] || null;
 
   useEffect(() => {
-    getWeather("Dallas");
-  }, []);
+    if (!activeNote) {
+      return;
+    }
+
+    if (!visibleNotes.some((note) => note.id === activeNote.id) && visibleNotes.length > 0) {
+      setAppState((current) => ({ ...current, activeId: visibleNotes[0].id }));
+    }
+  }, [activeNote, visibleNotes]);
+
+  useEffect(() => {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+  }, [appState]);
 
   useEffect(() => {
     function handleScroll() {
-      setIsBarCompact(window.scrollY > 80);
+      setIsCompact(window.scrollY > 72);
+    }
+
+    function handleShortcuts(event) {
+      const modifier = event.metaKey || event.ctrlKey;
+
+      if (!modifier) {
+        return;
+      }
+
+      const key = event.key.toLowerCase();
+
+      if (key === "k") {
+        event.preventDefault();
+        searchRef.current?.focus();
+      }
+
+      if (key === "n") {
+        event.preventDefault();
+        handleCreateNote();
+      }
+
+      if (key === "f" && event.shiftKey) {
+        event.preventDefault();
+        toggleFavorite();
+      }
+
+      if (key === "p" && event.shiftKey) {
+        event.preventDefault();
+        togglePinned();
+      }
     }
 
     handleScroll();
     window.addEventListener("scroll", handleScroll, { passive: true });
+    window.addEventListener("keydown", handleShortcuts);
 
     return () => {
       window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("keydown", handleShortcuts);
     };
-  }, []);
+  });
 
-  async function getWeather(searchCity) {
-    const cleanCity = searchCity.trim();
+  const noteCounts = useMemo(() => {
+    const visible = notes.filter((note) => !note.isDeleted && !note.isArchived);
+    const archived = notes.filter((note) => note.isArchived && !note.isDeleted);
+    const trash = notes.filter((note) => note.isDeleted);
+    const shared = visible.filter((note) => note.collaborators.length > 0);
 
-    if (!cleanCity) {
-      setError("Enter a city to search.");
-      setWeather(null);
-      setLocationName("");
-      return;
-    }
+    return {
+      all: visible.length,
+      pinned: visible.filter((note) => note.isPinned).length,
+      favorites: visible.filter((note) => note.isFavorite).length,
+      shared: shared.length,
+      inbound: shared.filter((note) => note.shareDirection === "inbound").length,
+      outbound: shared.filter((note) => note.shareDirection !== "inbound").length,
+      archive: archived.length,
+      trash: trash.length
+    };
+  }, [notes]);
 
-    setError("");
-    setLoading(true);
+  const folderCounts = useMemo(() => {
+    return folders.map((folder) => ({
+      ...folder,
+      count: notes.filter((note) => note.folderId === folder.id && !note.isDeleted && !note.isArchived).length
+    }));
+  }, [folders, notes]);
 
-    try {
-      const geoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(
-        cleanCity
-      )}&count=1&language=en&format=json`;
-      const geoResponse = await fetch(geoUrl);
+  const folderName = activeNote ? folderMap.get(activeNote.folderId)?.name || "Folder" : "Folder";
+  const viewLabel = query.trim() ? "Search results" : getViewLabel(activeView, folders);
+  const themeLabel = theme === "dark" ? "Switch to light mode" : "Switch to dark mode";
 
-      if (!geoResponse.ok) {
-        throw new Error("Could not search for that city. Try again.");
-      }
+  function commitNote(noteId, patch) {
+    setAppState((current) => {
+      const savedAt = nowIso();
 
-      const geoData = await geoResponse.json();
+      return {
+        ...current,
+        notes: current.notes.map((note) => {
+          if (note.id !== noteId) {
+            return note;
+          }
 
-      if (!geoData.results?.length) {
-        throw new Error("City not found. Try another city.");
-      }
+          const nextNote = {
+            ...note,
+            ...patch,
+            updatedAt: savedAt
+          };
 
-      const place = geoData.results[0];
-      const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${place.latitude}&longitude=${place.longitude}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,is_day&hourly=temperature_2m,weather_code,precipitation_probability&daily=weather_code,temperature_2m_max,temperature_2m_min,cloud_cover_mean,precipitation_probability_max&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=auto&forecast_hours=24`;
-      const weatherResponse = await fetch(weatherUrl);
+          if (!shouldStoreVersion(note, nextNote)) {
+            return nextNote;
+          }
 
-      if (!weatherResponse.ok) {
-        throw new Error("Could not load weather right now. Try again.");
-      }
-
-      const weatherData = await weatherResponse.json();
-      setWeather(weatherData);
-      setLocationName(formatLocation(place));
-      setSubmittedCity(cleanCity);
-    } catch (err) {
-      setWeather(null);
-      setLocationName("");
-      setError(err.message || "Something went wrong.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  function handleSubmit(event) {
-    event.preventDefault();
-    getWeather(city);
-  }
-
-  function toggleTheme() {
-    setThemePreference((currentThemePreference) => {
-      const currentTheme = currentThemePreference === "auto" ? locationTheme : currentThemePreference;
-      return currentTheme === "dark" ? "light" : "dark";
+          return {
+            ...nextNote,
+            versions: [
+              createVersionSnapshot(nextNote, savedAt),
+              ...(note.versions || [])
+            ].slice(0, MAX_NOTE_VERSIONS)
+          };
+        })
+      };
     });
   }
 
-  const current = weather?.current;
-  const daily = weather?.daily;
-  const hourly = weather?.hourly;
-  const locationTheme = current?.is_day === 1 ? "light" : "dark";
-  const theme = themePreference === "auto" ? locationTheme : themePreference;
-  const currentCondition = useMemo(
-    () => getCondition(current?.weather_code, current?.is_day !== 0),
-    [current?.weather_code, current?.is_day]
-  );
-  const todayHigh = daily ? Math.round(daily.temperature_2m_max[0]) : null;
-  const todayLow = daily ? Math.round(daily.temperature_2m_min[0]) : null;
+  function updateActiveNote(patch) {
+    if (!activeNote) {
+      return;
+    }
+
+    commitNote(activeNote.id, patch);
+  }
+
+  function handleSelectView(nextView) {
+    setAppState((current) => ({
+      ...current,
+      activeView: nextView
+    }));
+  }
+
+  function handleCreateNote() {
+    const defaultFolder = activeView.kind === "folder" ? activeView.id : folders[0]?.id;
+    const note = normalizeNote(
+      {
+        id: createId(),
+        title: "Untitled note",
+        content: "",
+        tags: [],
+        folderId: defaultFolder,
+        color: "amber",
+        collaborators: [],
+        shareDirection: null,
+        isPinned: false,
+        isFavorite: false,
+        isArchived: false,
+        isDeleted: false,
+        createdAt: nowIso(),
+        updatedAt: nowIso(),
+        versions: []
+      },
+      folders
+    );
+
+    setAppState((current) => ({
+      ...current,
+      notes: [note, ...current.notes],
+      activeId: note.id
+    }));
+
+    window.requestAnimationFrame(() => {
+      titleRef.current?.focus();
+    });
+  }
+
+  function handleDuplicateNote() {
+    if (!activeNote) {
+      return;
+    }
+
+    const duplicate = normalizeNote(
+      {
+        ...activeNote,
+        id: createId(),
+        title: `${activeNote.title} copy`,
+        shareDirection: activeNote.collaborators.length > 0 ? "outbound" : null,
+        isPinned: false,
+        isFavorite: false,
+        isArchived: false,
+        isDeleted: false,
+        createdAt: nowIso(),
+        updatedAt: nowIso(),
+        versions: []
+      },
+      folders
+    );
+
+    setAppState((current) => ({
+      ...current,
+      notes: [duplicate, ...current.notes],
+      activeId: duplicate.id
+    }));
+  }
+
+  function togglePinned() {
+    if (!activeNote) {
+      return;
+    }
+
+    updateActiveNote({ isPinned: !activeNote.isPinned });
+  }
+
+  function toggleFavorite() {
+    if (!activeNote) {
+      return;
+    }
+
+    updateActiveNote({ isFavorite: !activeNote.isFavorite });
+  }
+
+  function toggleArchive() {
+    if (!activeNote) {
+      return;
+    }
+
+    updateActiveNote({ isArchived: !activeNote.isArchived });
+  }
+
+  function sendToTrash() {
+    if (!activeNote) {
+      return;
+    }
+
+    updateActiveNote({
+      isDeleted: true,
+      isArchived: false
+    });
+  }
+
+  function restoreFromTrash() {
+    if (!activeNote) {
+      return;
+    }
+
+    updateActiveNote({
+      isDeleted: false
+    });
+  }
+
+  function deleteForever() {
+    if (!activeNote) {
+      return;
+    }
+
+    setAppState((current) => {
+      const remaining = current.notes.filter((note) => note.id !== activeNote.id);
+
+      return {
+        ...current,
+        notes: remaining,
+        activeId: remaining[0]?.id ?? null
+      };
+    });
+  }
+
+  function toggleTheme() {
+    setAppState((current) => ({
+      ...current,
+      theme: current.theme === "dark" ? "light" : "dark"
+    }));
+  }
+
+  function handleTitleChange(value) {
+    if (!activeNote) {
+      return;
+    }
+
+    updateActiveNote({
+      title: value,
+      isTitleAuto: value.trim() ? false : true
+    });
+  }
+
+  function handleBodyChange(value) {
+    if (!activeNote) {
+      return;
+    }
+
+    if (activeNote.isTitleAuto) {
+      updateActiveNote({
+        content: value,
+        title: deriveTitleFromContent(value),
+        isTitleAuto: true
+      });
+      return;
+    }
+
+    updateActiveNote({ content: value });
+  }
+
+  function insertCodeBlock() {
+    if (!activeNote || !bodyRef.current) {
+      return;
+    }
+
+    const textarea = bodyRef.current;
+    const selectionStart = textarea.selectionStart;
+    const selectionEnd = textarea.selectionEnd;
+    const selectedText = activeNote.content.slice(selectionStart, selectionEnd);
+    const codeContent = selectedText || "{\n  \n}";
+    const block = `\n\`\`\`${codeLanguage}\n${codeContent}\n\`\`\`\n`;
+    const nextContent =
+      activeNote.content.slice(0, selectionStart) + block + activeNote.content.slice(selectionEnd);
+
+    if (activeNote.isTitleAuto) {
+      updateActiveNote({
+        content: nextContent,
+        title: deriveTitleFromContent(nextContent),
+        isTitleAuto: true
+      });
+    } else {
+      updateActiveNote({ content: nextContent });
+    }
+
+    window.requestAnimationFrame(() => {
+      textarea.focus();
+      const cursor = selectionStart + block.length - 5;
+      textarea.setSelectionRange(cursor, cursor);
+    });
+  }
+
+  function addCollaborator() {
+    if (!activeNote) {
+      return;
+    }
+
+    const normalizedHandle = normalizeHandle(collaboratorInput);
+    if (!normalizedHandle) {
+      return;
+    }
+
+    const nextCollaborators = activeNote.collaborators.includes(normalizedHandle)
+      ? activeNote.collaborators
+      : [...activeNote.collaborators, normalizedHandle];
+
+    updateActiveNote({
+      collaborators: nextCollaborators,
+      shareDirection: nextCollaborators.length > 0 ? "outbound" : null
+    });
+    setCollaboratorInput("");
+  }
+
+  function removeCollaborator(handleToRemove) {
+    if (!activeNote) {
+      return;
+    }
+
+    updateActiveNote({
+      collaborators: activeNote.collaborators.filter((handle) => handle !== handleToRemove),
+      shareDirection:
+        activeNote.collaborators.filter((handle) => handle !== handleToRemove).length > 0
+          ? activeNote.shareDirection || "outbound"
+          : null
+    });
+  }
+
+  function restoreVersion(version) {
+    if (!activeNote) {
+      return;
+    }
+
+    const savedAt = nowIso();
+    const currentSnapshot = createVersionSnapshot(activeNote, savedAt);
+    const restoredCollaborators = version.collaborators || [];
+
+    setAppState((current) => ({
+      ...current,
+      notes: current.notes.map((note) => {
+        if (note.id !== activeNote.id) {
+          return note;
+        }
+
+        return {
+          ...note,
+          title: version.title || "Untitled note",
+          content: version.content || "",
+          tags: version.tags || [],
+          collaborators: restoredCollaborators,
+          shareDirection:
+            restoredCollaborators.length > 0
+              ? note.shareDirection || "outbound"
+              : null,
+          folderId: version.folderId || note.folderId,
+          color: version.color || note.color,
+          isTitleAuto: !version.title || version.title === deriveTitleFromContent(version.content || ""),
+          updatedAt: savedAt,
+          versions: [currentSnapshot, ...(note.versions || [])].slice(0, MAX_NOTE_VERSIONS)
+        };
+      })
+    }));
+  }
 
   return (
-    <main className={`app ${currentCondition.tone} ${theme}-theme`}>
-      <section className="weather-app" aria-label="Weather search app">
-        <header className={`app-bar ${isBarCompact ? "compact" : ""}`}>
-          <div className="location-stack">
+    <main className={`app-shell theme-${theme}`}>
+      <div className="backdrop backdrop-a" aria-hidden="true" />
+      <div className="backdrop backdrop-b" aria-hidden="true" />
+
+      <section className="notes-app" aria-label="Polished notes app">
+        <header className={`topbar ${isCompact ? "compact" : ""}`}>
+          <div className="brand">
+            <span className="brand-mark" aria-hidden="true">
+              N
+            </span>
             <div>
-              <p className="location-name">{locationName || "Weather"}</p>
+              <p className="eyebrow">Private workspace</p>
+              <h1>polished</h1>
             </div>
           </div>
 
-          {!isBarCompact && (
-            <>
-              <form onSubmit={handleSubmit} className="search">
-                <label htmlFor="city">Search city</label>
-                <div className="search-row">
-                  <input
-                    id="city"
-                    value={city}
-                    onChange={(event) => setCity(event.target.value)}
-                    placeholder="City or place"
-                    autoComplete="address-level2"
-                  />
-                  <button type="submit" disabled={loading} aria-label="Search weather">
-                    {loading ? "..." : "Search"}
-                  </button>
-                </div>
-              </form>
+          <label className="search" htmlFor="note-search">
+            <span>Search notes</span>
+            <input
+              ref={searchRef}
+              id="note-search"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search title, body, or tags"
+              autoComplete="off"
+            />
+          </label>
 
-              <button
-                className="theme-toggle"
-                type="button"
-                aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
-                aria-pressed={theme === "light"}
-                title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
-                onClick={toggleTheme}
-              >
-                <span aria-hidden="true">{theme === "dark" ? "☾" : "☀"}</span>
-              </button>
-            </>
-          )}
+          <div className="toolbar-actions">
+            <button className="ghost-action" type="button" onClick={toggleTheme} aria-label={themeLabel}>
+              {theme === "dark" ? "Dark" : "Light"}
+            </button>
+            <button className="primary-action" type="button" onClick={handleCreateNote}>
+              New note
+            </button>
+          </div>
         </header>
 
-        {error && <p className="error" role="alert">{error}</p>}
-
-        {loading && !weather && <p className="empty">Loading the latest forecast...</p>}
-
-        {current && daily && (
-          <div className="home-grid">
-            <section className="hero-panel" aria-label={`Current weather for ${locationName}`}>
-              <div className="weather-animation" aria-hidden="true">
-                <span></span>
-                <span></span>
-                <span></span>
+        <div className="workspace-grid">
+          <nav className="sidebar" aria-label="Navigation">
+            <div className="sidebar-section">
+              <div className="section-heading">
+                <p className="eyebrow">Workspace</p>
+                <span>{noteCounts.all} active</span>
               </div>
 
-              <div className="condition-row">
-                <div>
-                  <p className="eyebrow">Current weather</p>
-                  <p className="condition">{currentCondition.label}</p>
-                </div>
-                <div className="weather-visual" aria-label={currentCondition.label} role="img">
-                  <span>{currentCondition.icon}</span>
-                </div>
+              <button
+                type="button"
+                className={`nav-item ${activeView.kind === "all" ? "active" : ""}`}
+                onClick={() => handleSelectView({ kind: "all" })}
+              >
+                <span>All notes</span>
+                <strong>{noteCounts.all}</strong>
+              </button>
+              <button
+                type="button"
+                className={`nav-item ${activeView.kind === "pinned" ? "active" : ""}`}
+                onClick={() => handleSelectView({ kind: "pinned" })}
+              >
+                <span>Pinned</span>
+                <strong>{noteCounts.pinned}</strong>
+              </button>
+              <button
+                type="button"
+                className={`nav-item ${activeView.kind === "favorites" ? "active" : ""}`}
+                onClick={() => handleSelectView({ kind: "favorites" })}
+              >
+                <span>Favorites</span>
+                <strong>{noteCounts.favorites}</strong>
+              </button>
+              <button
+                type="button"
+                className={`nav-item ${activeView.kind === "archive" ? "active" : ""}`}
+                onClick={() => handleSelectView({ kind: "archive" })}
+              >
+                <span>Archive</span>
+                <strong>{noteCounts.archive}</strong>
+              </button>
+              <button
+                type="button"
+                className={`nav-item ${activeView.kind === "trash" ? "active" : ""}`}
+                onClick={() => handleSelectView({ kind: "trash" })}
+              >
+                <span>Trash</span>
+                <strong>{noteCounts.trash}</strong>
+              </button>
+            </div>
+
+            <div className="sidebar-section">
+              <div className="section-heading">
+                <p className="eyebrow">Folders</p>
+                <span>{folders.length} spaces</span>
               </div>
 
-              <div className="temperature-header">
-                <h1>{Math.round(current.temperature_2m)}°</h1>
-                <div>
-                  <span>Feels like {Math.round(current.apparent_temperature)}°</span>
-                  <span>{todayHigh}° daytime / {todayLow}° nighttime</span>
-                </div>
+              {folderCounts.map((folder) => (
+                <button
+                  type="button"
+                  key={folder.id}
+                  className={`nav-item folder-item ${
+                    activeView.kind === "folder" && activeView.id === folder.id ? "active" : ""
+                  }`}
+                  onClick={() => handleSelectView({ kind: "folder", id: folder.id })}
+                >
+                  <span>
+                    <span className={`folder-dot folder-${folder.color}`} aria-hidden="true" />
+                    {folder.name}
+                  </span>
+                  <strong>{folder.count}</strong>
+                </button>
+              ))}
+            </div>
+
+            <div className="sidebar-section">
+              <div className="section-heading">
+                <p className="eyebrow">Collaboration</p>
+                <span>{noteCounts.shared} shared</span>
               </div>
 
-              <p className="quick-note">
-                {submittedCity} forecast from Open-Meteo. Daily values follow the main-screen pattern:
-                condition, high, low, and precipitation probability.
-              </p>
-            </section>
+              <button
+                type="button"
+                className={`nav-item ${activeView.kind === "shared" ? "active" : ""}`}
+                onClick={() => handleSelectView({ kind: "shared" })}
+              >
+                <span>All shared</span>
+                <strong>{noteCounts.shared}</strong>
+              </button>
+              <button
+                type="button"
+                className={`nav-item ${activeView.kind === "inbound" ? "active" : ""}`}
+                onClick={() => handleSelectView({ kind: "inbound" })}
+              >
+                <span>Inbound</span>
+                <strong>{noteCounts.inbound}</strong>
+              </button>
+              <button
+                type="button"
+                className={`nav-item ${activeView.kind === "outbound" ? "active" : ""}`}
+                onClick={() => handleSelectView({ kind: "outbound" })}
+              >
+                <span>Outbound</span>
+                <strong>{noteCounts.outbound}</strong>
+              </button>
+            </div>
 
-            <section className="block alert-block" aria-label="Weather alerts">
-              <div className="section-title">
-                <div>
-                  <p>Alerts</p>
-                  <h2>No active alerts</h2>
-                </div>
-                <span>Current location</span>
+            <div className="sidebar-callout">
+              <p className="eyebrow">Quick keys</p>
+              <ul>
+                <li>
+                  <kbd>Ctrl</kbd> / <kbd>Cmd</kbd> + <kbd>K</kbd> focus search
+                </li>
+                <li>
+                  <kbd>Ctrl</kbd> / <kbd>Cmd</kbd> + <kbd>N</kbd> new note
+                </li>
+                <li>
+                  <kbd>Ctrl</kbd> / <kbd>Cmd</kbd> + <kbd>Shift</kbd> + <kbd>F</kbd> favorite
+                </li>
+              </ul>
+            </div>
+          </nav>
+
+          <section className="list-panel" aria-label="Notes list">
+            <div className="panel-head">
+              <div>
+                <p className="eyebrow">Collection</p>
+                <h3>{viewLabel}</h3>
               </div>
-              <p className="muted-copy">No severe weather alert data is available from this MVP source.</p>
-            </section>
+              <span>{query.trim() ? "Across workspace" : `${visibleNotes.length} shown`}</span>
+            </div>
 
-            {hourly && (
-              <section className="block hourly" aria-label="24-hour forecast">
-                <div className="section-title">
-                  <div>
-                    <p>Hourly forecast</p>
-                    <h2>Next 24 hours</h2>
-                  </div>
-                  <span>Temperature and rain</span>
-                </div>
+            <div className="panel-summary" aria-label="Note statistics">
+              {query.trim() ? (
+                <>
+                  <span>{visibleNotes.length} matches</span>
+                  <span>{notes.length} total notes</span>
+                  <span>Includes archive and trash</span>
+                </>
+              ) : ["shared", "inbound", "outbound"].includes(activeView.kind) ? (
+                <>
+                  <span>{noteCounts.shared} shared notes</span>
+                  <span>{noteCounts.outbound} outbound</span>
+                  <span>{noteCounts.inbound} inbound</span>
+                </>
+              ) : (
+                <>
+                  <span>{noteCounts.pinned} pinned</span>
+                  <span>{noteCounts.favorites} favorites</span>
+                  <span>{noteCounts.shared} shared</span>
+                  <span>{noteCounts.archive + noteCounts.trash} stored away</span>
+                </>
+              )}
+            </div>
 
-                <div className="hourly-strip">
-                  {hourly.time.slice(0, 24).map((time, index) => {
-                    const hourCondition = getCondition(hourly.weather_code[index]);
-                    const hourLabel = new Date(time).toLocaleTimeString("en-US", {
-                      hour: "numeric",
-                      hour12: true
-                    });
+            <div className="note-list" role="list">
+              {visibleNotes.length > 0 ? (
+                visibleNotes.map((note) => {
+                  const folder = folderMap.get(note.folderId);
+                  const selected = note.id === activeNote?.id;
 
-                    return (
-                      <article className="hour-card" key={time}>
-                        <strong>{index === 0 ? "Now" : hourLabel}</strong>
-                        <span aria-hidden="true">{hourCondition.icon}</span>
-                        <p>{Math.round(hourly.temperature_2m[index])}°</p>
-                        <small>{hourly.precipitation_probability[index] ?? 0}%</small>
-                      </article>
-                    );
-                  })}
-                </div>
-              </section>
-            )}
-
-            <aside className="block details-panel" aria-label="Weather details">
-              <div className="section-title">
-                <div>
-                  <p>Blocks</p>
-                  <h2>Conditions</h2>
-                </div>
-                <span>Right now</span>
-              </div>
-              <div className="stats">
-                <div>
-                  <span>Feels Like</span>
-                  <strong>{Math.round(current.apparent_temperature)}°</strong>
-                </div>
-                <div>
-                  <span>Humidity</span>
-                  <strong>{current.relative_humidity_2m}%</strong>
-                </div>
-                <div>
-                  <span>Wind</span>
-                  <strong>{Math.round(current.wind_speed_10m)} mph</strong>
-                </div>
-                <div>
-                  <span>Rain Chance</span>
-                  <strong>{daily.precipitation_probability_max[0] ?? 0}%</strong>
-                </div>
-              </div>
-            </aside>
-
-            <section className="block forecast" aria-label="7-day forecast">
-              <div className="section-title">
-                <div>
-                  <p>Daily forecast</p>
-                  <h2>Daily outlook</h2>
-                </div>
-                <span>{locationName}</span>
-              </div>
-
-              <div className="daily-trend">
-                {daily.time.map((day, index) => {
                   return (
-                    <article className="forecast-card" key={day}>
-                      <div className="forecast-day">
-                        <strong>
-                          {index === 0
-                            ? "Today"
-                            : new Date(`${day}T00:00:00`).toLocaleDateString("en-US", {
-                                weekday: "short"
-                              })}
-                        </strong>
-                        <span>{formatDate(day)}</span>
+                    <button
+                      type="button"
+                      role="listitem"
+                      key={note.id}
+                      className={`note-card note-card--${note.color} ${selected ? "active" : ""}`}
+                      style={{ "--note-accent": colorOptions.find((option) => option.value === note.color)?.swatch }}
+                      onClick={() => setAppState((current) => ({ ...current, activeId: note.id }))}
+                    >
+                      <div className="note-card-head">
+                        <strong>{note.title || "Untitled note"}</strong>
+                        <span>{formatDateTime(note.updatedAt)}</span>
                       </div>
-                      <div className="forecast-summary">
-                        <p className="forecast-temp">{Math.round(daily.temperature_2m_max[index])}°</p>
-                        <p className="forecast-low">{Math.round(daily.temperature_2m_min[index])}° low</p>
+                      <div className="note-badges">
+                        {note.isPinned && <span className="badge">Pinned</span>}
+                        {note.isFavorite && <span className="badge">Favorite</span>}
+                        {note.isArchived && <span className="badge">Archived</span>}
+                        {query.trim() && <span className="badge">{getSearchScopeLabel(note)}</span>}
+                        {note.collaborators.length > 0 && (
+                          <span className="badge">{getShareLabel(note)}</span>
+                        )}
+                        <span className="badge muted">{folder?.name || "Folder"}</span>
                       </div>
-                      <div className="rain-summary">
-                        <span>Overcast</span>
-                        <strong>{daily.cloud_cover_mean[index] ?? 0}%</strong>
+                      <p>{previewText(note)}</p>
+                      <div className="note-card-footer">
+                        <span>{note.tags.slice(0, 3).join(" · ") || "No tags"}</span>
+                        <span>{note.collaborators.slice(0, 2).join(" ") || "Private"}</span>
                       </div>
-                    </article>
+                    </button>
                   );
-                })}
-              </div>
-            </section>
-          </div>
-        )}
+                })
+              ) : (
+                <div className="empty-state">
+                  <h3>No notes here yet</h3>
+                  <p>Create a note in this view or clear your search to see more results.</p>
+                  <button type="button" className="primary-action" onClick={handleCreateNote}>
+                    Create note
+                  </button>
+                </div>
+              )}
+            </div>
+          </section>
 
-        {!weather && !loading && !error && (
-          <p className="empty">Search a city to see the current weather and weekly forecast.</p>
-        )}
+          <section className="editor-panel" aria-label="Note editor">
+            {activeNote ? (
+              <>
+                <div className="editor-top">
+                  <div>
+                    <p className="eyebrow">Page</p>
+                    <h3>{folderName}</h3>
+                  </div>
+
+                  <div className="editor-actions">
+                    <button type="button" className="ghost-action" onClick={togglePinned}>
+                      {activeNote.isPinned ? "Unpin" : "Pin"}
+                    </button>
+                    <button type="button" className="ghost-action" onClick={toggleFavorite}>
+                      {activeNote.isFavorite ? "Unfavorite" : "Favorite"}
+                    </button>
+                    <button type="button" className="ghost-action" onClick={toggleArchive}>
+                      {activeNote.isArchived ? "Unarchive" : "Archive"}
+                    </button>
+                    {activeNote.isDeleted ? (
+                      <>
+                        <button type="button" className="ghost-action" onClick={restoreFromTrash}>
+                          Restore
+                        </button>
+                        <button type="button" className="danger-action" onClick={deleteForever}>
+                          Delete forever
+                        </button>
+                      </>
+                    ) : (
+                      <button type="button" className="danger-action" onClick={sendToTrash}>
+                        Move to trash
+                      </button>
+                    )}
+                    <button type="button" className="ghost-action" onClick={handleDuplicateNote}>
+                      Duplicate
+                    </button>
+                  </div>
+                </div>
+
+                <div className="meta-row">
+                  <label className="editor-field">
+                    <span>Folder</span>
+                    <select
+                      value={activeNote.folderId}
+                      onChange={(event) => updateActiveNote({ folderId: event.target.value })}
+                    >
+                      {folders.map((folder) => (
+                        <option key={folder.id} value={folder.id}>
+                          {folder.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+
+                <div className="share-row" aria-label="Tags">
+                  <div className="share-head">
+                    <span className="eyebrow">Tags</span>
+                    <span>{activeNote.tags.length > 0 ? `${activeNote.tags.length} tags` : "No tags yet"}</span>
+                  </div>
+                  <div className="share-controls">
+                    <input
+                      aria-label="Tag name"
+                      value={tagInput}
+                      onChange={(event) => setTagInput(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === ",") {
+                          event.preventDefault();
+                          const nextTag = normalizeTagValue(tagInput);
+
+                          if (!nextTag || activeNote.tags.includes(nextTag) || activeNote.tags.length >= 12) {
+                            setTagInput("");
+                            return;
+                          }
+
+                          updateActiveNote({ tags: [...activeNote.tags, nextTag] });
+                          setTagInput("");
+                        }
+                      }}
+                      placeholder="meeting-notes"
+                    />
+                    <button
+                      type="button"
+                      className="ghost-action"
+                      onClick={() => {
+                        const nextTag = normalizeTagValue(tagInput);
+
+                        if (!nextTag || activeNote.tags.includes(nextTag) || activeNote.tags.length >= 12) {
+                          setTagInput("");
+                          return;
+                        }
+
+                        updateActiveNote({ tags: [...activeNote.tags, nextTag] });
+                        setTagInput("");
+                      }}
+                    >
+                      Add tag
+                    </button>
+                  </div>
+                  <div className="share-chips">
+                    {activeNote.tags.length > 0 ? (
+                      activeNote.tags.map((tag) => (
+                        <button
+                          key={tag}
+                          type="button"
+                          className="share-chip"
+                          onClick={() => updateActiveNote({ tags: activeNote.tags.filter((item) => item !== tag) })}
+                          aria-label={`Remove tag ${tag}`}
+                        >
+                          <span>#{tag}</span>
+                          <strong>x</strong>
+                        </button>
+                      ))
+                    ) : (
+                      <p className="share-empty">Add tags to keep related notes grouped together.</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="share-row" aria-label="Collaborators">
+                  <div className="share-head">
+                    <span className="eyebrow">Collaborators</span>
+                    <span>
+                      {activeNote.collaborators.length > 0
+                        ? `${getShareLabel(activeNote)} note`
+                        : "Private note"}
+                    </span>
+                  </div>
+                  <div className="share-controls">
+                    <input
+                      aria-label="Collaborator handle"
+                      value={collaboratorInput}
+                      onChange={(event) => setCollaboratorInput(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") {
+                          event.preventDefault();
+                          addCollaborator();
+                        }
+                      }}
+                      placeholder="@teammate"
+                    />
+                    <button type="button" className="ghost-action" onClick={addCollaborator}>
+                      Share note
+                    </button>
+                  </div>
+                  <div className="share-chips">
+                    {activeNote.collaborators.length > 0 ? (
+                      activeNote.collaborators.map((handle) => (
+                        <button
+                          key={handle}
+                          type="button"
+                          className="share-chip"
+                          onClick={() => removeCollaborator(handle)}
+                          aria-label={`Remove ${handle}`}
+                        >
+                          <span>{handle}</span>
+                          <strong>x</strong>
+                        </button>
+                      ))
+                    ) : (
+                      <p className="share-empty">Add a handle to share and collaborate on this note.</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="color-row" aria-label="Color picker">
+                  {colorOptions.map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      className={`color-chip ${activeNote.color === option.value ? "selected" : ""}`}
+                      style={{ "--chip-color": option.swatch }}
+                      aria-label={`Set color ${option.label}`}
+                      onClick={() => updateActiveNote({ color: option.value })}
+                    />
+                  ))}
+                </div>
+
+                <label className="editor-field editor-title">
+                  <span>Title</span>
+                  <input
+                    ref={titleRef}
+                    value={activeNote.title}
+                    onChange={(event) => handleTitleChange(event.target.value)}
+                    placeholder="Untitled note"
+                  />
+                </label>
+
+                <div className="code-tools" aria-label="Code block tools">
+                  <select
+                    aria-label="Code block language"
+                    value={codeLanguage}
+                    onChange={(event) => setCodeLanguage(event.target.value)}
+                  >
+                    <option value="json">JSON</option>
+                    <option value="sql">SQL</option>
+                    <option value="js">JavaScript</option>
+                    <option value="ts">TypeScript</option>
+                    <option value="bash">Bash</option>
+                    <option value="text">Plain text</option>
+                  </select>
+                  <button type="button" className="ghost-action" onClick={insertCodeBlock}>
+                    Insert code block
+                  </button>
+                </div>
+
+                <label className="editor-field editor-body">
+                  <span>Body</span>
+                  <textarea
+                    ref={bodyRef}
+                    aria-label="Body"
+                    value={activeNote.content}
+                    onChange={(event) => handleBodyChange(event.target.value)}
+                    placeholder={"Write in markdown. Use ```json for pasted code blocks."}
+                    rows={14}
+                  />
+                </label>
+
+                <div className="editor-meta">
+                  <span>Folder: {folderName}</span>
+                  <span aria-label="Autosave status">Autosaved {formatDateTime(activeNote.updatedAt)}</span>
+                  <span>{activeNote.tags.length > 0 ? `${activeNote.tags.length} tags` : "No tags yet"}</span>
+                  <span>
+                    {activeNote.collaborators.length > 0
+                      ? `${activeNote.collaborators.length} collaborators`
+                      : "Only you"}
+                  </span>
+                  <span>{activeNote.versions.length} restore points</span>
+                </div>
+
+                <section className="history-panel" aria-label="Version history">
+                  <div className="section-heading">
+                    <p className="eyebrow">Version history</p>
+                    <span>Autosaved restore points</span>
+                  </div>
+                  <div className="history-list">
+                    {activeNote.versions.length > 0 ? (
+                      activeNote.versions.slice(0, 6).map((version) => (
+                        <div key={version.id} className="history-item">
+                          <div>
+                            <strong>{version.title || "Untitled note"}</strong>
+                            <span>{formatDateTime(version.savedAt)}</span>
+                          </div>
+                          <button
+                            type="button"
+                            className="ghost-action"
+                            aria-label={`Restore version from ${formatDateTime(version.savedAt)}`}
+                            onClick={() => restoreVersion(version)}
+                          >
+                            Restore
+                          </button>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="share-empty">Restore points will appear after note changes.</p>
+                    )}
+                  </div>
+                </section>
+
+                <section className="preview-panel" aria-label="Markdown preview">
+                  <div className="section-heading">
+                    <p className="eyebrow">Simple preview</p>
+                    <span>Rendered markdown</span>
+                  </div>
+                  <div className="markdown-preview">{renderMarkdownPreview(activeNote.content)}</div>
+                </section>
+              </>
+            ) : (
+              <div className="empty-state editor-empty">
+                <h3>No note selected</h3>
+                <p>Create a note or choose one from the list to start editing.</p>
+                <button type="button" className="primary-action" onClick={handleCreateNote}>
+                  Create note
+                </button>
+              </div>
+            )}
+          </section>
+        </div>
       </section>
     </main>
   );

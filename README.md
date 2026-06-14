@@ -1,37 +1,21 @@
-# Simple Weather App
+# Polished Notes App
 
-A beginner-friendly React weather app based on `weather_app_scope.md`.
+A polished React notes workspace with a searchable sidebar, pinned notes, local persistence, and a focused writing pane.
 
-## MVP
+## Features
 
-- Search for any city.
-- Show current temperature and basic weather condition.
-- Show a large weather visual for the current condition.
-- Show a 7-day forecast with highs, lows, conditions, and rain chance.
-- Keep the interface simple and responsive.
+- Search notes by title, body, or tags.
+- Create, duplicate, pin, unpin, and delete notes.
+- Edit title, tags, and body in place.
+- Persist notes to `localStorage`.
+- Keep the interface responsive and compact on smaller screens.
 
 ## Tech
 
 - React
 - Vite
-- Open-Meteo Geocoding API
-- Open-Meteo Forecast API
-
-Open-Meteo does not require an API key for this MVP.
-
-## Live App
-
-Production URL:
-
-```text
-https://simple-weather-app-liart-gamma.vercel.app
-```
-
-## Deployment
-
-Production deploys are manual. Merging to `main` runs CI only and does not automatically deploy.
-
-See [docs/deployment.md](docs/deployment.md) for the GitHub Actions and Vercel workflow.
+- Vitest
+- React Testing Library
 
 ## Run Locally
 
@@ -52,36 +36,15 @@ http://localhost:5173
 npm test
 ```
 
-The test suite uses Vitest and React Testing Library. It covers:
-
-- Weather condition mapping
-- Location and date formatting
-- Default Dallas weather load
-- Searching another city
-- Empty city validation
-- City-not-found errors
-
 ## Project Structure
 
 ```text
-simple-weather-app/
+polished/
   index.html
   src/
     App.jsx
     main.jsx
-    weather.js
     App.test.jsx
-    weather.test.js
     style.css
+    test/setup.js
 ```
-
-## Version 1 Scope
-
-Out of scope for this first version:
-
-- User accounts
-- Saved favorite locations
-- Advanced analytics such as UV index and pressure
-- Push notifications
-- Maps or radar
-- Dark mode
