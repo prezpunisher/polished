@@ -9,11 +9,12 @@ A local-first React notes workspace for fast meeting notes, one-off capture, and
 - Collaboration filters for shared notes
 - Pin, favorite, archive, and trash states
 - Auto-generated note titles from body content
-- Markdown preview with fenced code blocks
 - Markdown checkboxes
 - Tag chips and collaborator chips
 - Local autosave and note restore history
-- Collapsible workspace sections and collection column (slide animation)
+- Per-note tabs in the editor (open, switch, close)
+- Collapsible collection column and inspector panel (slide animation)
+- Collapsible workspace sections in sidebar
 - Light and dark mode
 - Local persistence with `localStorage`
 
@@ -39,7 +40,7 @@ npm install
 npm run dev
 ```
 
-Then open the local URL Vite prints, usually `http://localhost:5173`.
+Then open `http://localhost:5173`.
 
 ## Run as macOS App (Electron)
 

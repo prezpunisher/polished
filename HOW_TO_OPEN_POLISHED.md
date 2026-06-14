@@ -12,11 +12,10 @@
 npm run dev
 ```
 
-Vite will print a local address. The port may vary if another app is already using the default:
+Vite will print a local address. We standardize on port 5173:
 
 ```
-http://127.0.0.1:5173/
-http://127.0.0.1:5174/
+http://localhost:5173/
 ```
 
 ## Run as a Standalone Mac App (Electron)
@@ -60,10 +59,9 @@ npm test -- --run
 ## Current Workspace Layout
 
 - **Left pane** — sidebar: workspace filters, folders, collaboration filters
-- **Middle pane** — collection: note list (collapses with slide animation)
-- **Right pane** — editor: title, body, tags, details, collaborators, version history, markdown preview
-
-The collection column toggle button sits at the boundary between the sidebar and collection panel. It stays in the same position whether the panel is open or closed.
+- **Middle pane** — collection: note list (collapses with slide animation; toggle button sits at the fixed sidebar boundary)
+- **Editor pane** — tab bar at top (open/switch/close tabs, + for new tab), then title, editor tools, and body textarea
+- **Right pane** — inspector: Page label, note actions (Pin/Favorite/Archive/Trash/Duplicate), Tags, Details, Collaborators, and History drawers (collapses with slide animation; toggle button lives in the tab bar far right)
 
 ## Note Storage
 
