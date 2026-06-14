@@ -61,7 +61,6 @@ describe("App", () => {
 
     expect(screen.getByRole("heading", { name: "polished" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "All notes" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "All notes" })).toBeInTheDocument();
     expect(screen.getByLabelText("Title")).toHaveValue("Design the notes surface");
     expect(screen.getByLabelText("Body")).toHaveValue(
       "# Layout direction\n\nKeep the interface editorial and calm.\n\n- Left navigation for organization\n- Center list for fast scanning\n- Right editor for focused writing"
@@ -69,11 +68,6 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: "Remove tag design" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Remove tag ui" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Remove tag product" })).toBeInTheDocument();
-
-    const preview = screen.getByLabelText("Markdown preview");
-    expect(within(preview).getByRole("heading", { name: "Layout direction", level: 3 })).toBeInTheDocument();
-    expect(within(preview).getByText("Left navigation for organization")).toBeInTheDocument();
-    expect(screen.queryByText("Simple preview")).not.toBeInTheDocument();
 
     expect(screen.getByLabelText("Note statistics")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Switch to dark mode" })).toBeInTheDocument();
@@ -127,37 +121,6 @@ describe("App", () => {
     expect(screen.getByLabelText("Title")).toHaveValue("Team sync");
   });
 
-  it("renders fenced code blocks in the markdown preview", async () => {
-    render(<App />);
-
-    fireEvent.change(screen.getByLabelText("Body"), {
-      target: {
-        value: '```json\n{\n  "name": "demo",\n  "enabled": true\n}\n```'
-      }
-    });
-
-    const preview = screen.getByLabelText("Markdown preview");
-    expect(within(preview).getByText("json")).toBeInTheDocument();
-    expect(within(preview).getByText(/"name": "demo"/)).toBeInTheDocument();
-    expect(within(preview).getByText(/"enabled": true/)).toBeInTheDocument();
-  });
-
-  it("renders markdown checkboxes in the preview", () => {
-    render(<App />);
-
-    fireEvent.change(screen.getByLabelText("Body"), {
-      target: {
-        value: "- [ ] Review requirements\n- [x] Share notes"
-      }
-    });
-
-    const preview = screen.getByLabelText("Markdown preview");
-    const checkboxes = within(preview).getAllByRole("checkbox");
-    expect(checkboxes).toHaveLength(2);
-    expect(checkboxes[0]).not.toBeChecked();
-    expect(checkboxes[1]).toBeChecked();
-  });
-
   it("inserts a json code block from the editor tools", async () => {
     const user = userEvent.setup();
 
@@ -167,9 +130,6 @@ describe("App", () => {
     await user.click(screen.getByRole("button", { name: "Insert code block" }));
 
     expect(screen.getByLabelText("Body").value).toContain("```json");
-
-    const preview = screen.getByLabelText("Markdown preview");
-    expect(within(preview).getByText("json")).toBeInTheDocument();
   });
 
   it("adds a collaborator handle and marks the note as shared", async () => {
@@ -196,21 +156,20 @@ describe("App", () => {
     await user.click(within(navigation).getByRole("button", { name: /All shared/ }));
 
     expect(screen.getByRole("heading", { name: "Shared notes" })).toBeInTheDocument();
-    expect(screen.getAllByText("Design the notes surface").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Weekly priorities").length).toBeGreaterThan(0);
-    expect(screen.queryByText("Reading list")).not.toBeInTheDocument();
-    expect(screen.getAllByText("Outbound").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Inbound").length).toBeGreaterThan(0);
+    const notesList = screen.getByLabelText("Notes list");
+    expect(within(notesList).getAllByText("Design the notes surface").length).toBeGreaterThan(0);
+    expect(within(notesList).getAllByText("Weekly priorities").length).toBeGreaterThan(0);
+    expect(within(notesList).queryByText("Reading list")).not.toBeInTheDocument();
 
     await user.click(within(navigation).getByRole("button", { name: /^Inbound/ }));
     expect(screen.getByRole("heading", { name: "Inbound notes" })).toBeInTheDocument();
-    expect(screen.getAllByText("Weekly priorities").length).toBeGreaterThan(0);
-    expect(screen.queryByText("Design the notes surface")).not.toBeInTheDocument();
+    expect(within(notesList).getAllByText("Weekly priorities").length).toBeGreaterThan(0);
+    expect(within(notesList).queryByText("Design the notes surface")).not.toBeInTheDocument();
 
     await user.click(within(navigation).getByRole("button", { name: /^Outbound/ }));
     expect(screen.getByRole("heading", { name: "Outbound notes" })).toBeInTheDocument();
-    expect(screen.getAllByText("Design the notes surface").length).toBeGreaterThan(0);
-    expect(screen.queryByText("Weekly priorities")).not.toBeInTheDocument();
+    expect(within(notesList).getAllByText("Design the notes surface").length).toBeGreaterThan(0);
+    expect(within(notesList).queryByText("Weekly priorities")).not.toBeInTheDocument();
   });
 
   it("adds tags as removable chips without relying on comma parsing", async () => {
@@ -260,7 +219,7 @@ describe("App", () => {
     await user.type(screen.getByLabelText("Search notes"), "reading");
 
     expect(screen.getAllByText("Reading list").length).toBeGreaterThan(0);
-    expect(screen.queryByText("Weekly priorities")).not.toBeInTheDocument();
+    expect(within(screen.getByLabelText("Notes list")).queryByText("Weekly priorities")).not.toBeInTheDocument();
     const notesList = within(screen.getByLabelText("Notes list")).getByRole("list");
     expect(within(notesList).getAllByRole("listitem")).toHaveLength(1);
   });
@@ -355,9 +314,9 @@ describe("App", () => {
     await user.click(within(navigation).getByRole("button", { name: /Trash/ }));
     expect(screen.getAllByText("Weekly priorities").length).toBeGreaterThan(0);
 
-    const editor = screen.getByLabelText("Note editor");
-    await user.click(within(editor).getByRole("button", { name: /^Restore$/ }));
-    expect(within(editor).queryByRole("button", { name: "Restore" })).not.toBeInTheDocument();
+    const inspector = screen.getByLabelText("Inspector");
+    await user.click(within(inspector).getByRole("button", { name: /^Restore$/ }));
+    expect(within(inspector).queryByRole("button", { name: "Restore" })).not.toBeInTheDocument();
   });
 
   it("stores restore points and can roll back to an earlier version", async () => {

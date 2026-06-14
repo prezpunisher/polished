@@ -633,6 +633,11 @@ export default function App() {
   const [query, setQuery] = useState("");
   const [isCompact, setIsCompact] = useState(false);
   const [isCollectionCollapsed, setIsCollectionCollapsed] = useState(false);
+  const [isInspectorCollapsed, setIsInspectorCollapsed] = useState(false);
+  const [openTabs, setOpenTabs] = useState(() => {
+    const s = loadAppState();
+    return s.activeId ? [s.activeId] : (s.notes[0]?.id ? [s.notes[0].id] : []);
+  });
   const [sidebarSections, setSidebarSections] = useState({
     workspace: true,
     folders: true,
@@ -792,6 +797,23 @@ export default function App() {
     commitNote(activeNote.id, patch);
   }
 
+  function openNoteInTab(noteId) {
+    setOpenTabs((prev) => (prev.includes(noteId) ? prev : [...prev, noteId]));
+    setAppState((current) => ({ ...current, activeId: noteId }));
+  }
+
+  function closeTab(noteId) {
+    setOpenTabs((prev) => {
+      const next = prev.filter((id) => id !== noteId);
+      if (activeId === noteId) {
+        const idx = prev.indexOf(noteId);
+        const nextActiveId = next[idx] ?? next[idx - 1] ?? null;
+        setAppState((curr) => ({ ...curr, activeId: nextActiveId }));
+      }
+      return next;
+    });
+  }
+
   function handleSelectView(nextView) {
     setAppState((current) => ({
       ...current,
@@ -854,6 +876,8 @@ export default function App() {
       notes: [note, ...current.notes],
       activeId: note.id
     }));
+
+    setOpenTabs((prev) => (prev.includes(note.id) ? prev : [...prev, note.id]));
 
     window.requestAnimationFrame(() => {
       titleRef.current?.focus();
@@ -939,8 +963,11 @@ export default function App() {
       return;
     }
 
+    const deletedId = activeNote.id;
+    setOpenTabs((prev) => prev.filter((id) => id !== deletedId));
+
     setAppState((current) => {
-      const remaining = current.notes.filter((note) => note.id !== activeNote.id);
+      const remaining = current.notes.filter((note) => note.id !== deletedId);
 
       return {
         ...current,
@@ -1156,7 +1183,7 @@ export default function App() {
           </div>
         </header>
 
-        <div className={`workspace-grid ${isCollectionCollapsed ? "collection-collapsed" : ""}`}>
+        <div className={`workspace-grid${isCollectionCollapsed ? " collection-collapsed" : ""}${isInspectorCollapsed ? " inspector-collapsed" : ""}`}>
           <nav className="sidebar" aria-label="Navigation">
             <div className="sidebar-section">
               <div className="section-heading">
@@ -1398,7 +1425,7 @@ export default function App() {
                         role="listitem"
                         key={note.id}
                         className={`note-card ${selected ? "active" : ""}`}
-                        onClick={() => setAppState((current) => ({ ...current, activeId: note.id }))}
+                        onClick={() => openNoteInTab(note.id)}
                       >
                         <div className="note-card-head">
                           <strong>{note.title || "Untitled note"}</strong>
@@ -1422,44 +1449,51 @@ export default function App() {
           </section>
 
           <section className="editor-panel" aria-label="Note editor">
+            <div className="tab-bar">
+              <div className="tab-list" role="tablist">
+                {openTabs.map((noteId) => {
+                  const tabNote = notes.find((n) => n.id === noteId);
+                  if (!tabNote) return null;
+                  const isActive = noteId === activeId;
+                  return (
+                    <div key={noteId} className={`tab${isActive ? " active" : ""}`} role="tab">
+                      <button
+                        type="button"
+                        className="tab-label"
+                        onClick={() => openNoteInTab(noteId)}
+                        aria-selected={isActive}
+                      >
+                        {tabNote.title || "Untitled note"}
+                      </button>
+                      <button
+                        type="button"
+                        className="tab-close"
+                        onClick={() => closeTab(noteId)}
+                        aria-label={`Close ${tabNote.title || "Untitled note"}`}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="tab-bar-end">
+                <button type="button" className="tab-new-btn" onClick={handleCreateNote} aria-label="New tab">
+                  +
+                </button>
+                <button
+                  type="button"
+                  className={`inspector-toggle-btn${!isInspectorCollapsed ? " open" : ""}`}
+                  onClick={() => setIsInspectorCollapsed((v) => !v)}
+                  aria-label={isInspectorCollapsed ? "Show inspector" : "Hide inspector"}
+                >
+                  <span aria-hidden="true">›</span>
+                </button>
+              </div>
+            </div>
+
             {activeNote ? (
               <>
-                <div className="editor-top">
-                  <div>
-                    <p className="eyebrow">Page</p>
-                    <h3>{folderName}</h3>
-                  </div>
-
-                  <div className="editor-actions">
-                    <button type="button" className="ghost-action" onClick={togglePinned}>
-                      {activeNote.isPinned ? "Unpin" : "Pin"}
-                    </button>
-                    <button type="button" className="ghost-action" onClick={toggleFavorite}>
-                      {activeNote.isFavorite ? "Unfavorite" : "Favorite"}
-                    </button>
-                    <button type="button" className="ghost-action" onClick={toggleArchive}>
-                      {activeNote.isArchived ? "Unarchive" : "Archive"}
-                    </button>
-                    {activeNote.isDeleted ? (
-                      <>
-                        <button type="button" className="ghost-action" onClick={restoreFromTrash}>
-                          Restore
-                        </button>
-                        <button type="button" className="danger-action" onClick={deleteForever}>
-                          Delete forever
-                        </button>
-                      </>
-                    ) : (
-                      <button type="button" className="danger-action" onClick={sendToTrash}>
-                        Move to trash
-                      </button>
-                    )}
-                    <button type="button" className="ghost-action" onClick={handleDuplicateNote}>
-                      Duplicate
-                    </button>
-                  </div>
-                </div>
-
                 <label className="editor-field editor-title">
                   <span>Title</span>
                   <input
@@ -1504,183 +1538,8 @@ export default function App() {
                 </label>
 
                 <div className="editor-meta minimal">
-                  <span>Folder: {folderName}</span>
                   <span aria-label="Autosave status">Autosaved {formatDateTime(activeNote.updatedAt)}</span>
-                  <span>{activeNote.tags.length > 0 ? `${activeNote.tags.length} tags` : "No tags"}</span>
                 </div>
-
-                <details className="editor-drawer" aria-label="Tags" open>
-                  <summary>Tags</summary>
-                  <div className="share-row drawer-body">
-                    <div className="share-controls">
-                      <input
-                        aria-label="Tag name"
-                        value={tagInput}
-                        onChange={(event) => setTagInput(event.target.value)}
-                        onKeyDown={(event) => {
-                          if (event.key === "Enter" || event.key === ",") {
-                            event.preventDefault();
-                            const nextTag = normalizeTagValue(tagInput);
-
-                            if (!nextTag || activeNote.tags.includes(nextTag) || activeNote.tags.length >= 12) {
-                              setTagInput("");
-                              return;
-                            }
-
-                            updateActiveNote({ tags: [...activeNote.tags, nextTag] });
-                            setTagInput("");
-                          }
-                        }}
-                        placeholder="meeting-notes"
-                      />
-                      <button
-                        type="button"
-                        className="ghost-action"
-                        onClick={() => {
-                          const nextTag = normalizeTagValue(tagInput);
-
-                          if (!nextTag || activeNote.tags.includes(nextTag) || activeNote.tags.length >= 12) {
-                            setTagInput("");
-                            return;
-                          }
-
-                          updateActiveNote({ tags: [...activeNote.tags, nextTag] });
-                          setTagInput("");
-                        }}
-                      >
-                        Add tag
-                      </button>
-                    </div>
-                    <div className="share-chips">
-                      {activeNote.tags.length > 0 ? (
-                        activeNote.tags.map((tag) => (
-                          <button
-                            key={tag}
-                            type="button"
-                            className="share-chip"
-                            onClick={() => updateActiveNote({ tags: activeNote.tags.filter((item) => item !== tag) })}
-                            aria-label={`Remove tag ${tag}`}
-                          >
-                            <span>#{tag}</span>
-                            <strong>x</strong>
-                          </button>
-                        ))
-                      ) : (
-                        <p className="share-empty">Add tags to keep related notes grouped together.</p>
-                      )}
-                    </div>
-                  </div>
-                </details>
-
-                <details className="editor-drawer" aria-label="Note details">
-                  <summary>Details</summary>
-                  <div className="drawer-grid">
-                    <label className="editor-field">
-                      <span>Folder</span>
-                      <select
-                        value={activeNote.folderId}
-                        onChange={(event) => updateActiveNote({ folderId: event.target.value })}
-                      >
-                        {folders.map((folder) => (
-                          <option key={folder.id} value={folder.id}>
-                            {folder.name}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-
-                    <div className="drawer-stack">
-                      <span className="eyebrow">Color</span>
-                      <div className="color-row compact" aria-label="Color picker">
-                        {colorOptions.map((option) => (
-                          <button
-                            key={option.value}
-                            type="button"
-                            className={`color-chip ${activeNote.color === option.value ? "selected" : ""}`}
-                            style={{ "--chip-color": option.swatch }}
-                            aria-label={`Set color ${option.label}`}
-                            onClick={() => updateActiveNote({ color: option.value })}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </details>
-
-                <details className="editor-drawer" aria-label="Collaborators">
-                  <summary>
-                    Collaborators
-                    <span>{activeNote.collaborators.length > 0 ? activeNote.collaborators.length : "Private"}</span>
-                  </summary>
-                  <div className="share-row drawer-body">
-                    <div className="share-controls">
-                      <input
-                        aria-label="Collaborator handle"
-                        value={collaboratorInput}
-                        onChange={(event) => setCollaboratorInput(event.target.value)}
-                        onKeyDown={(event) => {
-                          if (event.key === "Enter") {
-                            event.preventDefault();
-                            addCollaborator();
-                          }
-                        }}
-                        placeholder="@teammate"
-                      />
-                      <button type="button" className="ghost-action" onClick={addCollaborator}>
-                        Share note
-                      </button>
-                    </div>
-                    <div className="share-chips">
-                      {activeNote.collaborators.length > 0 ? (
-                        activeNote.collaborators.map((handle) => (
-                          <button
-                            key={handle}
-                            type="button"
-                            className="share-chip"
-                            onClick={() => removeCollaborator(handle)}
-                            aria-label={`Remove ${handle}`}
-                          >
-                            <span>{handle}</span>
-                            <strong>x</strong>
-                          </button>
-                        ))
-                      ) : (
-                        <p className="share-empty">Add a handle when the note needs collaborators.</p>
-                      )}
-                    </div>
-                  </div>
-                </details>
-
-                <details className="editor-drawer" aria-label="Version history">
-                  <summary>
-                    History
-                    <span>{activeNote.versions.length}</span>
-                  </summary>
-                  <div className="history-list">
-                    {activeNote.versions.length > 0 ? (
-                      activeNote.versions.slice(0, 6).map((version) => (
-                        <div key={version.id} className="history-item">
-                          <div>
-                            <strong>{version.title || "Untitled note"}</strong>
-                            <span>{formatDateTime(version.savedAt)}</span>
-                          </div>
-                          <button
-                            type="button"
-                            className="ghost-action"
-                            aria-label={`Restore version from ${formatDateTime(version.savedAt)}`}
-                            onClick={() => restoreVersion(version)}
-                          >
-                            Restore
-                          </button>
-                        </div>
-                      ))
-                    ) : (
-                      <p className="share-empty">Restore points will appear after note changes.</p>
-                    )}
-                  </div>
-                </details>
-
-
               </>
             ) : (
               <div className="empty-state editor-empty">
@@ -1691,6 +1550,219 @@ export default function App() {
                 </button>
               </div>
             )}
+          </section>
+
+          <section
+            className={`inspector-panel${isInspectorCollapsed ? " inspector-panel--collapsed" : ""}`}
+            aria-label="Inspector"
+          >
+            <div className="inspector-content">
+              {activeNote && (
+                <>
+                  <div className="inspector-head">
+                    <div>
+                      <p className="eyebrow">Page</p>
+                      <h3>{folderName}</h3>
+                    </div>
+                  </div>
+
+                  <div className="inspector-actions">
+                    <button type="button" className="ghost-action" onClick={togglePinned}>
+                      {activeNote.isPinned ? "Unpin" : "Pin"}
+                    </button>
+                    <button type="button" className="ghost-action" onClick={toggleFavorite}>
+                      {activeNote.isFavorite ? "Unfavorite" : "Favorite"}
+                    </button>
+                    <button type="button" className="ghost-action" onClick={toggleArchive}>
+                      {activeNote.isArchived ? "Unarchive" : "Archive"}
+                    </button>
+                    {activeNote.isDeleted ? (
+                      <>
+                        <button type="button" className="ghost-action" onClick={restoreFromTrash}>
+                          Restore
+                        </button>
+                        <button type="button" className="danger-action" onClick={deleteForever}>
+                          Delete forever
+                        </button>
+                      </>
+                    ) : (
+                      <button type="button" className="danger-action" onClick={sendToTrash}>
+                        Move to trash
+                      </button>
+                    )}
+                    <button type="button" className="ghost-action" onClick={handleDuplicateNote}>
+                      Duplicate
+                    </button>
+                  </div>
+
+                  <details className="editor-drawer" aria-label="Tags" open>
+                    <summary>Tags</summary>
+                    <div className="share-row drawer-body">
+                      <div className="share-controls">
+                        <input
+                          aria-label="Tag name"
+                          value={tagInput}
+                          onChange={(event) => setTagInput(event.target.value)}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter" || event.key === ",") {
+                              event.preventDefault();
+                              const nextTag = normalizeTagValue(tagInput);
+                              if (!nextTag || activeNote.tags.includes(nextTag) || activeNote.tags.length >= 12) {
+                                setTagInput("");
+                                return;
+                              }
+                              updateActiveNote({ tags: [...activeNote.tags, nextTag] });
+                              setTagInput("");
+                            }
+                          }}
+                          placeholder="meeting-notes"
+                        />
+                        <button
+                          type="button"
+                          className="ghost-action"
+                          onClick={() => {
+                            const nextTag = normalizeTagValue(tagInput);
+                            if (!nextTag || activeNote.tags.includes(nextTag) || activeNote.tags.length >= 12) {
+                              setTagInput("");
+                              return;
+                            }
+                            updateActiveNote({ tags: [...activeNote.tags, nextTag] });
+                            setTagInput("");
+                          }}
+                        >
+                          Add tag
+                        </button>
+                      </div>
+                      <div className="share-chips">
+                        {activeNote.tags.length > 0 ? (
+                          activeNote.tags.map((tag) => (
+                            <button
+                              key={tag}
+                              type="button"
+                              className="share-chip"
+                              onClick={() => updateActiveNote({ tags: activeNote.tags.filter((item) => item !== tag) })}
+                              aria-label={`Remove tag ${tag}`}
+                            >
+                              <span>#{tag}</span>
+                              <strong>x</strong>
+                            </button>
+                          ))
+                        ) : (
+                          <p className="share-empty">Add tags to keep related notes grouped together.</p>
+                        )}
+                      </div>
+                    </div>
+                  </details>
+
+                  <details className="editor-drawer" aria-label="Note details">
+                    <summary>Details</summary>
+                    <div className="drawer-grid">
+                      <label className="editor-field">
+                        <span>Folder</span>
+                        <select
+                          value={activeNote.folderId}
+                          onChange={(event) => updateActiveNote({ folderId: event.target.value })}
+                        >
+                          {folders.map((folder) => (
+                            <option key={folder.id} value={folder.id}>
+                              {folder.name}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <div className="drawer-stack">
+                        <span className="eyebrow">Color</span>
+                        <div className="color-row compact" aria-label="Color picker">
+                          {colorOptions.map((option) => (
+                            <button
+                              key={option.value}
+                              type="button"
+                              className={`color-chip ${activeNote.color === option.value ? "selected" : ""}`}
+                              style={{ "--chip-color": option.swatch }}
+                              aria-label={`Set color ${option.label}`}
+                              onClick={() => updateActiveNote({ color: option.value })}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </details>
+
+                  <details className="editor-drawer" aria-label="Collaborators">
+                    <summary>
+                      Collaborators
+                      <span>{activeNote.collaborators.length > 0 ? activeNote.collaborators.length : "Private"}</span>
+                    </summary>
+                    <div className="share-row drawer-body">
+                      <div className="share-controls">
+                        <input
+                          aria-label="Collaborator handle"
+                          value={collaboratorInput}
+                          onChange={(event) => setCollaboratorInput(event.target.value)}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter") {
+                              event.preventDefault();
+                              addCollaborator();
+                            }
+                          }}
+                          placeholder="@teammate"
+                        />
+                        <button type="button" className="ghost-action" onClick={addCollaborator}>
+                          Share note
+                        </button>
+                      </div>
+                      <div className="share-chips">
+                        {activeNote.collaborators.length > 0 ? (
+                          activeNote.collaborators.map((handle) => (
+                            <button
+                              key={handle}
+                              type="button"
+                              className="share-chip"
+                              onClick={() => removeCollaborator(handle)}
+                              aria-label={`Remove ${handle}`}
+                            >
+                              <span>{handle}</span>
+                              <strong>x</strong>
+                            </button>
+                          ))
+                        ) : (
+                          <p className="share-empty">Add a handle when the note needs collaborators.</p>
+                        )}
+                      </div>
+                    </div>
+                  </details>
+
+                  <details className="editor-drawer" aria-label="Version history">
+                    <summary>
+                      History
+                      <span>{activeNote.versions.length}</span>
+                    </summary>
+                    <div className="history-list">
+                      {activeNote.versions.length > 0 ? (
+                        activeNote.versions.slice(0, 6).map((version) => (
+                          <div key={version.id} className="history-item">
+                            <div>
+                              <strong>{version.title || "Untitled note"}</strong>
+                              <span>{formatDateTime(version.savedAt)}</span>
+                            </div>
+                            <button
+                              type="button"
+                              className="ghost-action"
+                              aria-label={`Restore version from ${formatDateTime(version.savedAt)}`}
+                              onClick={() => restoreVersion(version)}
+                            >
+                              Restore
+                            </button>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="share-empty">Restore points will appear after note changes.</p>
+                      )}
+                    </div>
+                  </details>
+                </>
+              )}
+            </div>
           </section>
         </div>
       </section>
