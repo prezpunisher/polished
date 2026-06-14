@@ -196,7 +196,7 @@ function createDefaultState() {
   const notes = seedNotes.map((note) => normalizeNote(note));
 
   return {
-    theme: "dark",
+    theme: "light",
     activeView: { kind: "all" },
     activeId: notes[0]?.id ?? null,
     folders: folderSeed.map(normalizeFolder),
@@ -626,14 +626,22 @@ function noteMatchesFolder(note, activeView) {
   return activeView.kind === "folder" ? note.folderId === activeView.id : true;
 }
 
+const isElectron = typeof navigator !== 'undefined' && /electron/i.test(navigator.userAgent);
+
 export default function App() {
   const [appState, setAppState] = useState(loadAppState);
   const [query, setQuery] = useState("");
   const [isCompact, setIsCompact] = useState(false);
   const [isCollectionCollapsed, setIsCollectionCollapsed] = useState(false);
+  const [sidebarSections, setSidebarSections] = useState({
+    workspace: true,
+    folders: true,
+    collaboration: true
+  });
   const [codeLanguage, setCodeLanguage] = useState("json");
   const [collaboratorInput, setCollaboratorInput] = useState("");
   const [tagInput, setTagInput] = useState("");
+  const [folderInput, setFolderInput] = useState("");
   const searchRef = useRef(null);
   const titleRef = useRef(null);
   const bodyRef = useRef(null);
@@ -789,6 +797,33 @@ export default function App() {
       ...current,
       activeView: nextView
     }));
+  }
+
+  function toggleSidebarSection(sectionKey) {
+    setSidebarSections((current) => ({
+      ...current,
+      [sectionKey]: !current[sectionKey]
+    }));
+  }
+
+  function createFolder() {
+    const nextName = folderInput.trim();
+    if (!nextName) {
+      return;
+    }
+
+    const folder = normalizeFolder({
+      id: createId(),
+      name: nextName,
+      color: "sky"
+    });
+
+    setAppState((current) => ({
+      ...current,
+      folders: [...current.folders, folder],
+      activeView: { kind: "folder", id: folder.id }
+    }));
+    setFolderInput("");
   }
 
   function handleCreateNote() {
@@ -1083,7 +1118,7 @@ export default function App() {
   }
 
   return (
-    <main className={`app-shell theme-${theme}`}>
+    <main className={`app-shell theme-${theme}${isElectron ? ' electron-app' : ''}`}>
       <div className="backdrop backdrop-a" aria-hidden="true" />
       <div className="backdrop backdrop-b" aria-hidden="true" />
 
@@ -1125,106 +1160,173 @@ export default function App() {
           <nav className="sidebar" aria-label="Navigation">
             <div className="sidebar-section">
               <div className="section-heading">
-                <p className="eyebrow">Workspace</p>
-                <span>{noteCounts.all} active</span>
-              </div>
-
-              <button
-                type="button"
-                className={`nav-item ${activeView.kind === "all" ? "active" : ""}`}
-                onClick={() => handleSelectView({ kind: "all" })}
-              >
-                <span>All notes</span>
-                <strong>{noteCounts.all}</strong>
-              </button>
-              <button
-                type="button"
-                className={`nav-item ${activeView.kind === "pinned" ? "active" : ""}`}
-                onClick={() => handleSelectView({ kind: "pinned" })}
-              >
-                <span>Pinned</span>
-                <strong>{noteCounts.pinned}</strong>
-              </button>
-              <button
-                type="button"
-                className={`nav-item ${activeView.kind === "favorites" ? "active" : ""}`}
-                onClick={() => handleSelectView({ kind: "favorites" })}
-              >
-                <span>Favorites</span>
-                <strong>{noteCounts.favorites}</strong>
-              </button>
-              <button
-                type="button"
-                className={`nav-item ${activeView.kind === "archive" ? "active" : ""}`}
-                onClick={() => handleSelectView({ kind: "archive" })}
-              >
-                <span>Archive</span>
-                <strong>{noteCounts.archive}</strong>
-              </button>
-              <button
-                type="button"
-                className={`nav-item ${activeView.kind === "trash" ? "active" : ""}`}
-                onClick={() => handleSelectView({ kind: "trash" })}
-              >
-                <span>Trash</span>
-                <strong>{noteCounts.trash}</strong>
-              </button>
-            </div>
-
-            <div className="sidebar-section">
-              <div className="section-heading">
-                <p className="eyebrow">Folders</p>
-                <span>{folders.length} spaces</span>
-              </div>
-
-              {folderCounts.map((folder) => (
+                <div className="section-heading-copy">
+                  <p className="eyebrow">Workspace</p>
+                  <span>{noteCounts.all} active</span>
+                </div>
                 <button
                   type="button"
-                  key={folder.id}
-                  className={`nav-item folder-item ${
-                    activeView.kind === "folder" && activeView.id === folder.id ? "active" : ""
-                  }`}
-                  onClick={() => handleSelectView({ kind: "folder", id: folder.id })}
+                  className={`section-toggle ${sidebarSections.workspace ? "open" : ""}`}
+                  aria-label={sidebarSections.workspace ? "Collapse workspace" : "Expand workspace"}
+                  onClick={() => toggleSidebarSection("workspace")}
                 >
-                  <span>
-                    <span className={`folder-dot folder-${folder.color}`} aria-hidden="true" />
-                    {folder.name}
-                  </span>
-                  <strong>{folder.count}</strong>
+                  <span aria-hidden="true">▾</span>
                 </button>
-              ))}
+              </div>
+
+              {sidebarSections.workspace && (
+                <div className="sidebar-section-body">
+                  <button
+                    type="button"
+                    className={`nav-item ${activeView.kind === "all" ? "active" : ""}`}
+                    onClick={() => handleSelectView({ kind: "all" })}
+                  >
+                    <span>All notes</span>
+                    <strong>{noteCounts.all}</strong>
+                  </button>
+                  <button
+                    type="button"
+                    className={`nav-item ${activeView.kind === "pinned" ? "active" : ""}`}
+                    onClick={() => handleSelectView({ kind: "pinned" })}
+                  >
+                    <span>Pinned</span>
+                    <strong>{noteCounts.pinned}</strong>
+                  </button>
+                  <button
+                    type="button"
+                    className={`nav-item ${activeView.kind === "favorites" ? "active" : ""}`}
+                    onClick={() => handleSelectView({ kind: "favorites" })}
+                  >
+                    <span>Favorites</span>
+                    <strong>{noteCounts.favorites}</strong>
+                  </button>
+                  <button
+                    type="button"
+                    className={`nav-item ${activeView.kind === "archive" ? "active" : ""}`}
+                    onClick={() => handleSelectView({ kind: "archive" })}
+                  >
+                    <span>Archive</span>
+                    <strong>{noteCounts.archive}</strong>
+                  </button>
+                  <button
+                    type="button"
+                    className={`nav-item ${activeView.kind === "trash" ? "active" : ""}`}
+                    onClick={() => handleSelectView({ kind: "trash" })}
+                  >
+                    <span>Trash</span>
+                    <strong>{noteCounts.trash}</strong>
+                  </button>
+                </div>
+              )}
             </div>
 
             <div className="sidebar-section">
               <div className="section-heading">
-                <p className="eyebrow">Collaboration</p>
-                <span>{noteCounts.shared} shared</span>
+                <div className="section-heading-copy">
+                  <p className="eyebrow">Folders</p>
+                  <span>{folders.length} spaces</span>
+                </div>
+                <button
+                  type="button"
+                  className={`section-toggle ${sidebarSections.folders ? "open" : ""}`}
+                  aria-label={sidebarSections.folders ? "Collapse folders" : "Expand folders"}
+                  onClick={() => toggleSidebarSection("folders")}
+                >
+                  <span aria-hidden="true">▾</span>
+                </button>
               </div>
 
-              <button
-                type="button"
-                className={`nav-item ${activeView.kind === "shared" ? "active" : ""}`}
-                onClick={() => handleSelectView({ kind: "shared" })}
-              >
-                <span>All shared</span>
-                <strong>{noteCounts.shared}</strong>
-              </button>
-              <button
-                type="button"
-                className={`nav-item ${activeView.kind === "inbound" ? "active" : ""}`}
-                onClick={() => handleSelectView({ kind: "inbound" })}
-              >
-                <span>Inbound</span>
-                <strong>{noteCounts.inbound}</strong>
-              </button>
-              <button
-                type="button"
-                className={`nav-item ${activeView.kind === "outbound" ? "active" : ""}`}
-                onClick={() => handleSelectView({ kind: "outbound" })}
-              >
-                <span>Outbound</span>
-                <strong>{noteCounts.outbound}</strong>
-              </button>
+              {sidebarSections.folders && (
+                <div className="sidebar-section-body">
+                  <div className="sidebar-inline-form">
+                    <input
+                      aria-label="Folder name"
+                      value={folderInput}
+                      onChange={(event) => setFolderInput(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") {
+                          event.preventDefault();
+                          createFolder();
+                        }
+                      }}
+                      placeholder="New folder"
+                    />
+                    <button
+                      type="button"
+                      className="ghost-action inline-add"
+                      onClick={createFolder}
+                    >
+                      Add
+                    </button>
+                  </div>
+                  {folderCounts.map((folder) => (
+                    <button
+                      type="button"
+                      key={folder.id}
+                      className={`nav-item folder-item ${
+                        activeView.kind === "folder" && activeView.id === folder.id ? "active" : ""
+                      }`}
+                      onClick={() => handleSelectView({ kind: "folder", id: folder.id })}
+                    >
+                      <span>
+                        <span className={`folder-dot folder-${folder.color}`} aria-hidden="true" />
+                        {folder.name}
+                      </span>
+                      <strong>{folder.count}</strong>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="sidebar-section">
+              <div className="section-heading">
+                <div className="section-heading-copy">
+                  <p className="eyebrow">Collaboration</p>
+                  <span>{noteCounts.shared} shared</span>
+                </div>
+                <button
+                  type="button"
+                  className={`section-toggle ${sidebarSections.collaboration ? "open" : ""}`}
+                  aria-label={
+                    sidebarSections.collaboration
+                      ? "Collapse collaboration"
+                      : "Expand collaboration"
+                  }
+                  onClick={() => toggleSidebarSection("collaboration")}
+                >
+                  <span aria-hidden="true">▾</span>
+                </button>
+              </div>
+
+              {sidebarSections.collaboration && (
+                <div className="sidebar-section-body">
+                  <button
+                    type="button"
+                    className={`nav-item ${activeView.kind === "shared" ? "active" : ""}`}
+                    onClick={() => handleSelectView({ kind: "shared" })}
+                  >
+                    <span>All shared</span>
+                    <strong>{noteCounts.shared}</strong>
+                  </button>
+                  <button
+                    type="button"
+                    className={`nav-item ${activeView.kind === "inbound" ? "active" : ""}`}
+                    onClick={() => handleSelectView({ kind: "inbound" })}
+                  >
+                    <span>Inbound</span>
+                    <strong>{noteCounts.inbound}</strong>
+                  </button>
+                  <button
+                    type="button"
+                    className={`nav-item ${activeView.kind === "outbound" ? "active" : ""}`}
+                    onClick={() => handleSelectView({ kind: "outbound" })}
+                  >
+                    <span>Outbound</span>
+                    <strong>{noteCounts.outbound}</strong>
+                  </button>
+                </div>
+              )}
             </div>
 
             <div className="sidebar-callout">
@@ -1243,92 +1345,79 @@ export default function App() {
             </div>
           </nav>
 
-          <section className="list-panel" aria-label="Notes list">
-            <div className="panel-head">
-              <div>
-                <p className="eyebrow">Collection</p>
-                <h3>{viewLabel}</h3>
-              </div>
-              <div className="panel-head-actions">
-                <span>{query.trim() ? "Across workspace" : `${visibleNotes.length} shown`}</span>
-                <button
-                  type="button"
-                  className="ghost-action panel-toggle"
-                  onClick={() => setIsCollectionCollapsed(true)}
-                  aria-label="Collapse collection"
-                >
-                  Hide
-                </button>
-              </div>
-            </div>
+          <button
+            type="button"
+            className={`list-panel-toggle ${!isCollectionCollapsed ? "open" : ""}`}
+            onClick={() => setIsCollectionCollapsed((v) => !v)}
+            aria-label={isCollectionCollapsed ? "Expand collection" : "Collapse collection"}
+          >
+            <span aria-hidden="true">›</span>
+          </button>
 
-            <div className="panel-summary" aria-label="Note statistics">
-              {query.trim() ? (
-                <>
-                  <span>{visibleNotes.length} matches</span>
-                  <span>{notes.length} total notes</span>
-                  <span>Includes archive and trash</span>
-                </>
-              ) : ["shared", "inbound", "outbound"].includes(activeView.kind) ? (
-                <>
-                  <span>{noteCounts.shared} shared notes</span>
-                  <span>{noteCounts.outbound} outbound</span>
-                  <span>{noteCounts.inbound} inbound</span>
-                </>
-              ) : (
-                <>
-                  <span>{noteCounts.pinned} pinned</span>
-                  <span>{noteCounts.favorites} favorites</span>
-                </>
-              )}
-            </div>
-
-            <div className="note-list" role="list">
-              {visibleNotes.length > 0 ? (
-                visibleNotes.map((note) => {
-                  const folder = folderMap.get(note.folderId);
-                  const selected = note.id === activeNote?.id;
-
-                  return (
-                    <button
-                      type="button"
-                      role="listitem"
-                      key={note.id}
-                      className={`note-card note-card--${note.color} ${selected ? "active" : ""}`}
-                      style={{ "--note-accent": colorOptions.find((option) => option.value === note.color)?.swatch }}
-                      onClick={() => setAppState((current) => ({ ...current, activeId: note.id }))}
-                    >
-                      <div className="note-card-head">
-                        <strong>{note.title || "Untitled note"}</strong>
-                        <span>{formatDateTime(note.updatedAt)}</span>
-                      </div>
-                      <div className="note-badges">
-                        {note.isPinned && <span className="badge">Pinned</span>}
-                        {note.isFavorite && <span className="badge">Favorite</span>}
-                        {note.isArchived && <span className="badge">Archived</span>}
-                        {query.trim() && <span className="badge">{getSearchScopeLabel(note)}</span>}
-                        {note.collaborators.length > 0 && (
-                          <span className="badge">{getShareLabel(note)}</span>
-                        )}
-                        <span className="badge muted">{folder?.name || "Folder"}</span>
-                      </div>
-                      <p>{previewText(note)}</p>
-                      <div className="note-card-footer">
-                        <span>{note.tags.slice(0, 3).join(" · ") || "No tags"}</span>
-                        <span>{note.collaborators.slice(0, 2).join(" ") || "Private"}</span>
-                      </div>
-                    </button>
-                  );
-                })
-              ) : (
-                <div className="empty-state">
-                  <h3>No notes here yet</h3>
-                  <p>Create a note in this view or clear your search to see more results.</p>
-                  <button type="button" className="primary-action" onClick={handleCreateNote}>
-                    Create note
-                  </button>
+          <section className={`list-panel${isCollectionCollapsed ? " list-panel--collapsed" : ""}`} aria-label="Notes list">
+            <div className="list-panel-content">
+              <div className="panel-head">
+                <div>
+                  <p className="eyebrow">Collection</p>
+                  <h3>{viewLabel}</h3>
                 </div>
-              )}
+                <div className="panel-head-actions">
+                  <span>{query.trim() ? "Across workspace" : `${visibleNotes.length} shown`}</span>
+                </div>
+              </div>
+
+              <div className="panel-summary" aria-label="Note statistics">
+                {query.trim() ? (
+                  <>
+                    <span>{visibleNotes.length} matches</span>
+                    <span>{notes.length} total notes</span>
+                    <span>Includes archive and trash</span>
+                  </>
+                ) : ["shared", "inbound", "outbound"].includes(activeView.kind) ? (
+                  <>
+                    <span>{noteCounts.shared} shared notes</span>
+                    <span>{noteCounts.outbound} outbound</span>
+                    <span>{noteCounts.inbound} inbound</span>
+                  </>
+                ) : (
+                  <>
+                    <span>{noteCounts.pinned} pinned</span>
+                    <span>{noteCounts.favorites} favorites</span>
+                  </>
+                )}
+              </div>
+
+              <div className="note-list" role="list">
+                {visibleNotes.length > 0 ? (
+                  visibleNotes.map((note) => {
+                    const selected = note.id === activeNote?.id;
+
+                    return (
+                      <button
+                        type="button"
+                        role="listitem"
+                        key={note.id}
+                        className={`note-card ${selected ? "active" : ""}`}
+                        onClick={() => setAppState((current) => ({ ...current, activeId: note.id }))}
+                      >
+                        <div className="note-card-head">
+                          <strong>{note.title || "Untitled note"}</strong>
+                          <span>{formatDateTime(note.updatedAt)}</span>
+                        </div>
+                        <p>{previewText(note)}</p>
+                      </button>
+                    );
+                  })
+                ) : (
+                  <div className="empty-state">
+                    <h3>No notes here yet</h3>
+                    <p>Create a note in this view or clear your search to see more results.</p>
+                    <button type="button" className="primary-action" onClick={handleCreateNote}>
+                      Create note
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </section>
 
@@ -1342,16 +1431,6 @@ export default function App() {
                   </div>
 
                   <div className="editor-actions">
-                    {isCollectionCollapsed && (
-                      <button
-                        type="button"
-                        className="ghost-action"
-                        onClick={() => setIsCollectionCollapsed(false)}
-                        aria-label="Expand collection"
-                      >
-                        Show collection
-                      </button>
-                    )}
                     <button type="button" className="ghost-action" onClick={togglePinned}>
                       {activeNote.isPinned ? "Unpin" : "Pin"}
                     </button>

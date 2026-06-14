@@ -1,6 +1,6 @@
 # Polished Notes App
 
-A local-first React notes workspace for fast meeting notes, one-off capture, and later retrieval.
+A local-first React notes workspace for fast meeting notes, one-off capture, and later retrieval. Runs in the browser during development and can be packaged as a standalone macOS app via Electron.
 
 ## Features
 
@@ -13,8 +13,16 @@ A local-first React notes workspace for fast meeting notes, one-off capture, and
 - Markdown checkboxes
 - Tag chips and collaborator chips
 - Local autosave and note restore history
-- Collapsible workspace sections and collection column
+- Collapsible workspace sections and collection column (slide animation)
+- Light and dark mode
 - Local persistence with `localStorage`
+
+## Design Language
+
+The UI uses a **pill/circle** design language:
+- Text buttons and inputs: `border-radius: 999px` (pill)
+- Icon buttons and color swatches: `border-radius: 50%` (circle)
+- Previous style was **rounded rectangle** (`border-radius: 6px`) — revert by swapping values in `style.css`
 
 ## Tech
 
@@ -22,21 +30,36 @@ A local-first React notes workspace for fast meeting notes, one-off capture, and
 - Vite
 - Vitest
 - React Testing Library
+- Electron (for macOS packaging)
 
-## Run Locally
+## Run in Browser
 
 ```bash
 npm install
 npm run dev
 ```
 
-Then open the local URL Vite prints, usually:
+Then open the local URL Vite prints, usually `http://localhost:5173`.
+
+## Run as macOS App (Electron)
+
+Open two terminals:
 
 ```bash
-http://localhost:5173
+# Terminal 1 — start the dev server
+npm run dev
+
+# Terminal 2 — open the Electron window
+npm run electron
 ```
 
-If `5173` is already in use, Vite will move to another local port such as `5174`.
+## Build macOS App (DMG)
+
+```bash
+npm run electron:build
+```
+
+Output goes to `release/`.
 
 ## Test
 
@@ -44,7 +67,7 @@ If `5173` is already in use, Vite will move to another local port such as `5174`
 npm test -- --run
 ```
 
-## Build
+## Build for Web
 
 ```bash
 npm run build
@@ -54,13 +77,16 @@ npm run build
 
 ```text
 polished/
-  HOW_TO_OPEN_POLISHED.md
-  POLISHED_CHAT_SUMMARY.md
-  index.html
+  electron/
+    main.js           ← Electron main process
   src/
-    App.jsx
+    App.jsx           ← All app logic and UI
+    style.css         ← All styles
     main.jsx
     App.test.jsx
-    style.css
     test/setup.js
+  vite.config.js      ← base: './' for Electron compatibility
+  HOW_TO_OPEN_POLISHED.md
+  POLISHED_CHAT_SUMMARY.md
+  NOTES.md
 ```

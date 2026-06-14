@@ -1,11 +1,14 @@
 {
   "name": "polished",
+  "main": "electron/main.js",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "electron": "electron .",
+    "electron:build": "vite build && electron-builder"
   },
   "dependencies": {
     "@vitejs/plugin-react": "latest",
@@ -17,7 +20,32 @@
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
+    "electron": "^35.7.5",
+    "electron-builder": "^25.1.8",
     "jsdom": "^29.1.1",
     "vitest": "^4.1.5"
+  },
+  "build": {
+    "appId": "com.polished.notes",
+    "productName": "Polished",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*"
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ]
+    }
   }
 }

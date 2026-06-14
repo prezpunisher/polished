@@ -2,32 +2,44 @@
 
 ## Project Location
 
-The project now lives at:
-
-`/Users/iffy/AI-Projects/polished`
-
-## Open In Terminal
-
-```bash
-cd /Users/iffy/AI-Projects/polished
+```
+/Users/iffy/ai-projects/polished
 ```
 
-## Run The App
-
-If dependencies are already installed:
+## Run in the Browser (Development)
 
 ```bash
 npm run dev
 ```
 
-Vite will print a local address. The port may change if another local app is already using the default port. Recent runs have used URLs like:
+Vite will print a local address. The port may vary if another app is already using the default:
 
-```text
+```
 http://127.0.0.1:5173/
 http://127.0.0.1:5174/
 ```
 
-If that address does not load, check the terminal output and use the exact URL Vite prints.
+## Run as a Standalone Mac App (Electron)
+
+Open two terminals in the project directory:
+
+```bash
+# Terminal 1
+npm run dev
+
+# Terminal 2
+npm run electron
+```
+
+The Electron window connects to the Vite dev server. The title bar uses `hiddenInset` — traffic lights appear inside the app header.
+
+## Build a Mac App DMG
+
+```bash
+npm run electron:build
+```
+
+Output is in `release/`. Builds for both `arm64` (Apple Silicon) and `x64` (Intel).
 
 ## Run Tests
 
@@ -35,44 +47,30 @@ If that address does not load, check the terminal output and use the exact URL V
 npm test -- --run
 ```
 
-## Build
-
-```bash
-npm run build
-```
-
 ## Main Files
 
-- App logic: `/Users/iffy/AI-Projects/polished/src/App.jsx`
-- Styling: `/Users/iffy/AI-Projects/polished/src/style.css`
-- Tests: `/Users/iffy/AI-Projects/polished/src/App.test.jsx`
+| File | Purpose |
+|---|---|
+| `src/App.jsx` | All app logic and UI |
+| `src/style.css` | All styles |
+| `src/App.test.jsx` | Tests |
+| `electron/main.js` | Electron main process |
+| `vite.config.js` | Vite config (`base: './'` for Electron) |
 
 ## Current Workspace Layout
 
-- Left pane: workspace filters, folders, and collaboration filters
-- Middle pane: collection column with the current note list
-- Right pane: focused note editor and markdown preview
+- **Left pane** — sidebar: workspace filters, folders, collaboration filters
+- **Middle pane** — collection: note list (collapses with slide animation)
+- **Right pane** — editor: title, body, tags, details, collaborators, version history, markdown preview
 
-The left sidebar sections can be collapsed with arrow toggles.
+The collection column toggle button sits at the boundary between the sidebar and collection panel. It stays in the same position whether the panel is open or closed.
 
-The collection column can also be collapsed.
+## Note Storage
 
-When the collection column is visible and the note list is longer than the viewport, that pane now scrolls independently instead of scrolling the entire page.
+Notes are saved in browser `localStorage` under:
 
-## Current Note Behavior
+```
+polished-notes-app
+```
 
-- Notes autosave locally as you type
-- New notes can derive a title from the body if you do not set one manually
-- Tags are managed as chips instead of a comma-separated text field
-- Collaborators are managed as handle chips
-- Markdown supports fenced code blocks such as `json`, `sql`, `js`, and `bash`
-- Markdown checkboxes are supported with `- [ ]` and `- [x]`
-- Version history keeps restore points for rollback inside the app
-
-## Notes Storage
-
-The app stores note data in browser `localStorage` under:
-
-`polished-notes-app`
-
-That means your notes are saved in the browser profile you used to open the app, not in a `.md` or `.txt` file by default.
+Notes persist in the browser profile (or Electron app) on this machine. Clearing site data or uninstalling the app clears the notes.

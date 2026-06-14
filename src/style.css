@@ -74,6 +74,7 @@ button {
   --accent: #9a9a9a;
   --accent-soft: rgba(210, 210, 210, 0.08);
   background: #202020;
+  color: var(--text);
 }
 
 .backdrop {
@@ -118,6 +119,17 @@ button {
   padding: 10px 14px;
 }
 
+.electron-app .topbar {
+  padding-left: 80px;
+  -webkit-app-region: drag;
+}
+
+.electron-app .topbar button,
+.electron-app .topbar input,
+.electron-app .topbar label {
+  -webkit-app-region: no-drag;
+}
+
 .brand {
   display: flex;
   align-items: center;
@@ -128,12 +140,12 @@ button {
 .brand-mark {
   display: grid;
   place-items: center;
-  width: 34px;
-  height: 34px;
-  border-radius: 6px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
   background: var(--panel-raised);
   border: 1px solid var(--border);
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 700;
   color: var(--text);
 }
@@ -169,7 +181,7 @@ button {
 .editor-field select {
   width: 100%;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: 999px;
   background: var(--canvas);
   color: var(--text);
   outline: none;
@@ -177,6 +189,10 @@ button {
     border-color 140ms ease,
     box-shadow 140ms ease,
     background-color 140ms ease;
+}
+
+.editor-field textarea {
+  border-radius: 8px;
 }
 
 .search input {
@@ -224,9 +240,9 @@ button {
 .primary-action,
 .ghost-action,
 .danger-action {
-  height: 34px;
-  padding: 0 12px;
-  border-radius: 6px;
+  height: 32px;
+  padding: 0 14px;
+  border-radius: 999px;
   border: 1px solid var(--border);
   transition:
     background-color 140ms ease,
@@ -269,16 +285,18 @@ button {
 }
 
 .workspace-grid {
+  position: relative;
   display: grid;
   grid-template-columns: 255px 330px minmax(0, 1fr);
   gap: 0;
   margin-top: 0;
   align-items: stretch;
   min-height: 0;
+  transition: grid-template-columns 240ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .workspace-grid.collection-collapsed {
-  grid-template-columns: 255px minmax(0, 1fr);
+  grid-template-columns: 255px 32px minmax(0, 1fr);
 }
 
 .sidebar,
@@ -331,9 +349,9 @@ button {
 .sidebar-inline-form input {
   width: 100%;
   height: 30px;
-  padding: 0 8px;
+  padding: 0 12px;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: 999px;
   background: var(--canvas);
   color: var(--text);
   outline: none;
@@ -342,7 +360,7 @@ button {
 .inline-add {
   height: 30px;
   min-width: 44px;
-  padding: 0 10px;
+  padding: 0 12px;
 }
 
 .section-toggle {
@@ -351,7 +369,7 @@ button {
   justify-content: center;
   width: 24px;
   height: 24px;
-  border-radius: 6px;
+  border-radius: 50%;
   border: 1px solid var(--border);
   background: var(--panel);
   color: var(--text-muted);
@@ -390,7 +408,7 @@ button {
   gap: 10px;
   width: 100%;
   padding: 10px 12px;
-  border-radius: 6px;
+  border-radius: 999px;
   color: var(--text-soft);
   text-align: left;
 }
@@ -402,7 +420,6 @@ button {
 .nav-item.active {
   background: var(--panel-hover);
   color: var(--text);
-  box-shadow: inset 2px 0 0 var(--text);
 }
 
 .nav-item span {
@@ -468,25 +485,72 @@ button {
   align-items: center;
   justify-content: center;
   min-width: 22px;
-  padding: 2px 6px;
-  border-radius: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
   background: var(--panel-raised);
   border: 1px solid var(--border);
   font-size: 0.8rem;
 }
 
 .list-panel {
-  padding: 10px 12px 14px;
+  position: relative;
+  padding: 0;
   height: 100%;
   border-top: 0;
   border-left: 0;
   border-bottom: 0;
   background: var(--panel);
-  overflow-y: auto;
+  overflow: hidden;
 }
 
-.workspace-grid.collection-collapsed .list-panel {
-  display: none;
+.list-panel-content {
+  width: 330px;
+  height: 100%;
+  padding: 10px 12px 14px;
+  overflow-y: auto;
+  opacity: 1;
+  transition: opacity 160ms ease;
+}
+
+.list-panel--collapsed .list-panel-content {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.list-panel-toggle {
+  position: absolute;
+  top: 10px;
+  left: 255px;
+  transform: translateX(-50%);
+  z-index: 4;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--panel-raised);
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  cursor: pointer;
+  transition: background-color 140ms ease, color 140ms ease;
+}
+
+.list-panel-toggle:hover {
+  background: var(--panel-hover);
+  color: var(--text);
+}
+
+.list-panel-toggle span {
+  display: inline-block;
+  line-height: 1;
+  transition: transform 240ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.list-panel-toggle.open span {
+  transform: rotate(180deg);
 }
 
 .panel-head {
@@ -529,10 +593,10 @@ button {
 
 .note-card {
   display: grid;
-  gap: 8px;
+  gap: 4px;
   width: 100%;
-  padding: 10px 10px 12px;
-  border-radius: 8px;
+  padding: 8px 10px;
+  border-radius: 6px;
   text-align: left;
   color: var(--text);
   border: 1px solid transparent;
@@ -542,7 +606,6 @@ button {
 .note-card.active {
   background: var(--panel-hover);
   border-color: var(--border);
-  box-shadow: inset 2px 0 0 var(--text);
 }
 
 .note-card-head,
@@ -665,9 +728,9 @@ button {
   flex: 1;
   min-width: 0;
   height: 38px;
-  padding: 0 12px;
+  padding: 0 14px;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: 999px;
   background: var(--canvas);
   color: var(--text);
   outline: none;
@@ -719,7 +782,7 @@ button {
 .color-chip {
   width: 22px;
   height: 22px;
-  border-radius: 6px;
+  border-radius: 50%;
   border: 2px solid transparent;
   background: var(--chip-color);
 }

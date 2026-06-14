@@ -76,7 +76,7 @@ describe("App", () => {
     expect(screen.queryByText("Simple preview")).not.toBeInTheDocument();
 
     expect(screen.getByLabelText("Note statistics")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Switch to light mode" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Switch to dark mode" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "New note" })).toBeInTheDocument();
     expect(screen.getAllByText("@maya").length).toBeGreaterThan(0);
   });
@@ -229,6 +229,19 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: "Remove tag followup" })).toBeInTheDocument();
   });
 
+  it("creates a user folder from the left pane", async () => {
+    const user = userEvent.setup();
+
+    render(<App />);
+
+    await user.clear(screen.getByLabelText("Folder name"));
+    await user.type(screen.getByLabelText("Folder name"), "Meeting archive");
+    await user.click(screen.getByRole("button", { name: "Add" }));
+
+    expect(screen.getByRole("button", { name: /Meeting archive/ })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Meeting archive" })).toBeInTheDocument();
+  });
+
   it("inserts a markdown checkbox from the editor tools", async () => {
     const user = userEvent.setup();
 
@@ -265,6 +278,36 @@ describe("App", () => {
 
     await user.click(screen.getByRole("button", { name: "Expand collection" }));
     expect(document.querySelector(".workspace-grid")).not.toHaveClass("collection-collapsed");
+  });
+
+  it("collapses and expands sidebar sections", async () => {
+    const user = userEvent.setup();
+
+    render(<App />);
+
+    expect(screen.getByRole("button", { name: /All notes/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /All shared/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Work/ })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Collapse workspace" }));
+    expect(screen.queryByRole("button", { name: /All notes/ })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Expand workspace" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Collapse folders" }));
+    expect(screen.queryByRole("button", { name: /Work/ })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Expand folders" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Collapse collaboration" }));
+    expect(screen.queryByRole("button", { name: /All shared/ })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Expand collaboration" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Expand workspace" }));
+    await user.click(screen.getByRole("button", { name: "Expand folders" }));
+    await user.click(screen.getByRole("button", { name: "Expand collaboration" }));
+
+    expect(screen.getByRole("button", { name: /All notes/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /All shared/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Work/ })).toBeInTheDocument();
   });
 
   it("searches across the whole workspace regardless of the current view", async () => {
