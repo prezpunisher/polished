@@ -872,6 +872,15 @@ button {
   font-size: 0.84rem;
 }
 
+.inspector-content .share-controls {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.inspector-content .share-controls input {
+  width: 100%;
+}
+
 .meta-row {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
