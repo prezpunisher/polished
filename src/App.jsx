@@ -1602,7 +1602,7 @@ export default function App() {
                               onClick={() => updateActiveNote({ tags: activeNote.tags.filter((item) => item !== tag) })}
                               aria-label={`Remove tag ${tag}`}
                             >
-                              <span>#{tag}</span>
+                              <span>{tag}</span>
                               <strong>x</strong>
                             </button>
                           ))
