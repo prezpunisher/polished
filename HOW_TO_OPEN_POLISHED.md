@@ -15,7 +15,7 @@ npm run dev
 Vite will print a local address. We standardize on port 5173:
 
 ```
-http://localhost:5173/
+http://localhost:5174/
 ```
 
 ## Run as a Standalone Mac App (Electron)
