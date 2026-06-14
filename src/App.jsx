@@ -196,7 +196,7 @@ function createDefaultState() {
   const notes = seedNotes.map((note) => normalizeNote(note));
 
   return {
-    theme: "light",
+    theme: "dark",
     activeView: { kind: "all" },
     activeId: notes[0]?.id ?? null,
     folders: folderSeed.map(normalizeFolder),
@@ -563,6 +563,32 @@ function renderMarkdownPreview(content) {
       continue;
     }
 
+    if (/^[-*]\s+\[( |x|X)\]\s+/.test(line)) {
+      const items = [];
+      while (index < lines.length && /^[-*]\s+\[( |x|X)\]\s+/.test(lines[index])) {
+        const match = lines[index].match(/^[-*]\s+\[( |x|X)\]\s+(.*)$/);
+        items.push({
+          checked: match[1].toLowerCase() === "x",
+          text: match[2]
+        });
+        index += 1;
+      }
+
+      nodes.push(
+        <ul key={`checklist-${index}`} className="preview-checklist">
+          {items.map((item, itemIndex) => (
+            <li key={`check-${index}-${itemIndex}`}>
+              <label>
+                <input type="checkbox" checked={item.checked} readOnly />
+                <span>{parseInlineMarkdown(item.text, `check-${index}-${itemIndex}`)}</span>
+              </label>
+            </li>
+          ))}
+        </ul>
+      );
+      continue;
+    }
+
     if (/^[-*]\s+/.test(line)) {
       const items = [];
       while (index < lines.length && /^[-*]\s+/.test(lines[index])) {
@@ -604,6 +630,7 @@ export default function App() {
   const [appState, setAppState] = useState(loadAppState);
   const [query, setQuery] = useState("");
   const [isCompact, setIsCompact] = useState(false);
+  const [isCollectionCollapsed, setIsCollectionCollapsed] = useState(false);
   const [codeLanguage, setCodeLanguage] = useState("json");
   const [collaboratorInput, setCollaboratorInput] = useState("");
   const [tagInput, setTagInput] = useState("");
@@ -954,6 +981,36 @@ export default function App() {
     });
   }
 
+  function insertCheckbox() {
+    if (!activeNote || !bodyRef.current) {
+      return;
+    }
+
+    const textarea = bodyRef.current;
+    const selectionStart = textarea.selectionStart;
+    const selectionEnd = textarea.selectionEnd;
+    const selectedText = activeNote.content.slice(selectionStart, selectionEnd).trim();
+    const line = `- [ ] ${selectedText}`;
+    const nextContent =
+      activeNote.content.slice(0, selectionStart) + line + activeNote.content.slice(selectionEnd);
+
+    if (activeNote.isTitleAuto) {
+      updateActiveNote({
+        content: nextContent,
+        title: deriveTitleFromContent(nextContent),
+        isTitleAuto: true
+      });
+    } else {
+      updateActiveNote({ content: nextContent });
+    }
+
+    window.requestAnimationFrame(() => {
+      textarea.focus();
+      const cursor = selectionStart + 6;
+      textarea.setSelectionRange(cursor, cursor);
+    });
+  }
+
   function addCollaborator() {
     if (!activeNote) {
       return;
@@ -1064,7 +1121,7 @@ export default function App() {
           </div>
         </header>
 
-        <div className="workspace-grid">
+        <div className={`workspace-grid ${isCollectionCollapsed ? "collection-collapsed" : ""}`}>
           <nav className="sidebar" aria-label="Navigation">
             <div className="sidebar-section">
               <div className="section-heading">
@@ -1192,7 +1249,17 @@ export default function App() {
                 <p className="eyebrow">Collection</p>
                 <h3>{viewLabel}</h3>
               </div>
-              <span>{query.trim() ? "Across workspace" : `${visibleNotes.length} shown`}</span>
+              <div className="panel-head-actions">
+                <span>{query.trim() ? "Across workspace" : `${visibleNotes.length} shown`}</span>
+                <button
+                  type="button"
+                  className="ghost-action panel-toggle"
+                  onClick={() => setIsCollectionCollapsed(true)}
+                  aria-label="Collapse collection"
+                >
+                  Hide
+                </button>
+              </div>
             </div>
 
             <div className="panel-summary" aria-label="Note statistics">
@@ -1212,8 +1279,6 @@ export default function App() {
                 <>
                   <span>{noteCounts.pinned} pinned</span>
                   <span>{noteCounts.favorites} favorites</span>
-                  <span>{noteCounts.shared} shared</span>
-                  <span>{noteCounts.archive + noteCounts.trash} stored away</span>
                 </>
               )}
             </div>
@@ -1277,6 +1342,16 @@ export default function App() {
                   </div>
 
                   <div className="editor-actions">
+                    {isCollectionCollapsed && (
+                      <button
+                        type="button"
+                        className="ghost-action"
+                        onClick={() => setIsCollectionCollapsed(false)}
+                        aria-label="Expand collection"
+                      >
+                        Show collection
+                      </button>
+                    )}
                     <button type="button" className="ghost-action" onClick={togglePinned}>
                       {activeNote.isPinned ? "Unpin" : "Pin"}
                     </button>
@@ -1306,145 +1381,6 @@ export default function App() {
                   </div>
                 </div>
 
-                <div className="meta-row">
-                  <label className="editor-field">
-                    <span>Folder</span>
-                    <select
-                      value={activeNote.folderId}
-                      onChange={(event) => updateActiveNote({ folderId: event.target.value })}
-                    >
-                      {folders.map((folder) => (
-                        <option key={folder.id} value={folder.id}>
-                          {folder.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                </div>
-
-                <div className="share-row" aria-label="Tags">
-                  <div className="share-head">
-                    <span className="eyebrow">Tags</span>
-                    <span>{activeNote.tags.length > 0 ? `${activeNote.tags.length} tags` : "No tags yet"}</span>
-                  </div>
-                  <div className="share-controls">
-                    <input
-                      aria-label="Tag name"
-                      value={tagInput}
-                      onChange={(event) => setTagInput(event.target.value)}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter" || event.key === ",") {
-                          event.preventDefault();
-                          const nextTag = normalizeTagValue(tagInput);
-
-                          if (!nextTag || activeNote.tags.includes(nextTag) || activeNote.tags.length >= 12) {
-                            setTagInput("");
-                            return;
-                          }
-
-                          updateActiveNote({ tags: [...activeNote.tags, nextTag] });
-                          setTagInput("");
-                        }
-                      }}
-                      placeholder="meeting-notes"
-                    />
-                    <button
-                      type="button"
-                      className="ghost-action"
-                      onClick={() => {
-                        const nextTag = normalizeTagValue(tagInput);
-
-                        if (!nextTag || activeNote.tags.includes(nextTag) || activeNote.tags.length >= 12) {
-                          setTagInput("");
-                          return;
-                        }
-
-                        updateActiveNote({ tags: [...activeNote.tags, nextTag] });
-                        setTagInput("");
-                      }}
-                    >
-                      Add tag
-                    </button>
-                  </div>
-                  <div className="share-chips">
-                    {activeNote.tags.length > 0 ? (
-                      activeNote.tags.map((tag) => (
-                        <button
-                          key={tag}
-                          type="button"
-                          className="share-chip"
-                          onClick={() => updateActiveNote({ tags: activeNote.tags.filter((item) => item !== tag) })}
-                          aria-label={`Remove tag ${tag}`}
-                        >
-                          <span>#{tag}</span>
-                          <strong>x</strong>
-                        </button>
-                      ))
-                    ) : (
-                      <p className="share-empty">Add tags to keep related notes grouped together.</p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="share-row" aria-label="Collaborators">
-                  <div className="share-head">
-                    <span className="eyebrow">Collaborators</span>
-                    <span>
-                      {activeNote.collaborators.length > 0
-                        ? `${getShareLabel(activeNote)} note`
-                        : "Private note"}
-                    </span>
-                  </div>
-                  <div className="share-controls">
-                    <input
-                      aria-label="Collaborator handle"
-                      value={collaboratorInput}
-                      onChange={(event) => setCollaboratorInput(event.target.value)}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter") {
-                          event.preventDefault();
-                          addCollaborator();
-                        }
-                      }}
-                      placeholder="@teammate"
-                    />
-                    <button type="button" className="ghost-action" onClick={addCollaborator}>
-                      Share note
-                    </button>
-                  </div>
-                  <div className="share-chips">
-                    {activeNote.collaborators.length > 0 ? (
-                      activeNote.collaborators.map((handle) => (
-                        <button
-                          key={handle}
-                          type="button"
-                          className="share-chip"
-                          onClick={() => removeCollaborator(handle)}
-                          aria-label={`Remove ${handle}`}
-                        >
-                          <span>{handle}</span>
-                          <strong>x</strong>
-                        </button>
-                      ))
-                    ) : (
-                      <p className="share-empty">Add a handle to share and collaborate on this note.</p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="color-row" aria-label="Color picker">
-                  {colorOptions.map((option) => (
-                    <button
-                      key={option.value}
-                      type="button"
-                      className={`color-chip ${activeNote.color === option.value ? "selected" : ""}`}
-                      style={{ "--chip-color": option.swatch }}
-                      aria-label={`Set color ${option.label}`}
-                      onClick={() => updateActiveNote({ color: option.value })}
-                    />
-                  ))}
-                </div>
-
                 <label className="editor-field editor-title">
                   <span>Title</span>
                   <input
@@ -1455,7 +1391,7 @@ export default function App() {
                   />
                 </label>
 
-                <div className="code-tools" aria-label="Code block tools">
+                <div className="editor-tools" aria-label="Editor tools">
                   <select
                     aria-label="Code block language"
                     value={codeLanguage}
@@ -1471,6 +1407,9 @@ export default function App() {
                   <button type="button" className="ghost-action" onClick={insertCodeBlock}>
                     Insert code block
                   </button>
+                  <button type="button" className="ghost-action" onClick={insertCheckbox}>
+                    Insert checkbox
+                  </button>
                 </div>
 
                 <label className="editor-field editor-body">
@@ -1485,23 +1424,159 @@ export default function App() {
                   />
                 </label>
 
-                <div className="editor-meta">
+                <div className="editor-meta minimal">
                   <span>Folder: {folderName}</span>
                   <span aria-label="Autosave status">Autosaved {formatDateTime(activeNote.updatedAt)}</span>
-                  <span>{activeNote.tags.length > 0 ? `${activeNote.tags.length} tags` : "No tags yet"}</span>
-                  <span>
-                    {activeNote.collaborators.length > 0
-                      ? `${activeNote.collaborators.length} collaborators`
-                      : "Only you"}
-                  </span>
-                  <span>{activeNote.versions.length} restore points</span>
+                  <span>{activeNote.tags.length > 0 ? `${activeNote.tags.length} tags` : "No tags"}</span>
                 </div>
 
-                <section className="history-panel" aria-label="Version history">
-                  <div className="section-heading">
-                    <p className="eyebrow">Version history</p>
-                    <span>Autosaved restore points</span>
+                <details className="editor-drawer" aria-label="Tags" open>
+                  <summary>Tags</summary>
+                  <div className="share-row drawer-body">
+                    <div className="share-controls">
+                      <input
+                        aria-label="Tag name"
+                        value={tagInput}
+                        onChange={(event) => setTagInput(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === ",") {
+                            event.preventDefault();
+                            const nextTag = normalizeTagValue(tagInput);
+
+                            if (!nextTag || activeNote.tags.includes(nextTag) || activeNote.tags.length >= 12) {
+                              setTagInput("");
+                              return;
+                            }
+
+                            updateActiveNote({ tags: [...activeNote.tags, nextTag] });
+                            setTagInput("");
+                          }
+                        }}
+                        placeholder="meeting-notes"
+                      />
+                      <button
+                        type="button"
+                        className="ghost-action"
+                        onClick={() => {
+                          const nextTag = normalizeTagValue(tagInput);
+
+                          if (!nextTag || activeNote.tags.includes(nextTag) || activeNote.tags.length >= 12) {
+                            setTagInput("");
+                            return;
+                          }
+
+                          updateActiveNote({ tags: [...activeNote.tags, nextTag] });
+                          setTagInput("");
+                        }}
+                      >
+                        Add tag
+                      </button>
+                    </div>
+                    <div className="share-chips">
+                      {activeNote.tags.length > 0 ? (
+                        activeNote.tags.map((tag) => (
+                          <button
+                            key={tag}
+                            type="button"
+                            className="share-chip"
+                            onClick={() => updateActiveNote({ tags: activeNote.tags.filter((item) => item !== tag) })}
+                            aria-label={`Remove tag ${tag}`}
+                          >
+                            <span>#{tag}</span>
+                            <strong>x</strong>
+                          </button>
+                        ))
+                      ) : (
+                        <p className="share-empty">Add tags to keep related notes grouped together.</p>
+                      )}
+                    </div>
                   </div>
+                </details>
+
+                <details className="editor-drawer" aria-label="Note details">
+                  <summary>Details</summary>
+                  <div className="drawer-grid">
+                    <label className="editor-field">
+                      <span>Folder</span>
+                      <select
+                        value={activeNote.folderId}
+                        onChange={(event) => updateActiveNote({ folderId: event.target.value })}
+                      >
+                        {folders.map((folder) => (
+                          <option key={folder.id} value={folder.id}>
+                            {folder.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+
+                    <div className="drawer-stack">
+                      <span className="eyebrow">Color</span>
+                      <div className="color-row compact" aria-label="Color picker">
+                        {colorOptions.map((option) => (
+                          <button
+                            key={option.value}
+                            type="button"
+                            className={`color-chip ${activeNote.color === option.value ? "selected" : ""}`}
+                            style={{ "--chip-color": option.swatch }}
+                            aria-label={`Set color ${option.label}`}
+                            onClick={() => updateActiveNote({ color: option.value })}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </details>
+
+                <details className="editor-drawer" aria-label="Collaborators">
+                  <summary>
+                    Collaborators
+                    <span>{activeNote.collaborators.length > 0 ? activeNote.collaborators.length : "Private"}</span>
+                  </summary>
+                  <div className="share-row drawer-body">
+                    <div className="share-controls">
+                      <input
+                        aria-label="Collaborator handle"
+                        value={collaboratorInput}
+                        onChange={(event) => setCollaboratorInput(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter") {
+                            event.preventDefault();
+                            addCollaborator();
+                          }
+                        }}
+                        placeholder="@teammate"
+                      />
+                      <button type="button" className="ghost-action" onClick={addCollaborator}>
+                        Share note
+                      </button>
+                    </div>
+                    <div className="share-chips">
+                      {activeNote.collaborators.length > 0 ? (
+                        activeNote.collaborators.map((handle) => (
+                          <button
+                            key={handle}
+                            type="button"
+                            className="share-chip"
+                            onClick={() => removeCollaborator(handle)}
+                            aria-label={`Remove ${handle}`}
+                          >
+                            <span>{handle}</span>
+                            <strong>x</strong>
+                          </button>
+                        ))
+                      ) : (
+                        <p className="share-empty">Add a handle when the note needs collaborators.</p>
+                      )}
+                    </div>
+                  </div>
+                </details>
+
+                <details className="editor-drawer" aria-label="Version history">
+                  <summary>
+                    History
+                    <span>{activeNote.versions.length}</span>
+                  </summary>
                   <div className="history-list">
                     {activeNote.versions.length > 0 ? (
                       activeNote.versions.slice(0, 6).map((version) => (
@@ -1524,13 +1599,9 @@ export default function App() {
                       <p className="share-empty">Restore points will appear after note changes.</p>
                     )}
                   </div>
-                </section>
+                </details>
 
                 <section className="preview-panel" aria-label="Markdown preview">
-                  <div className="section-heading">
-                    <p className="eyebrow">Simple preview</p>
-                    <span>Rendered markdown</span>
-                  </div>
                   <div className="markdown-preview">{renderMarkdownPreview(activeNote.content)}</div>
                 </section>
               </>

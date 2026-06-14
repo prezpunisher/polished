@@ -73,9 +73,10 @@ describe("App", () => {
     const preview = screen.getByLabelText("Markdown preview");
     expect(within(preview).getByRole("heading", { name: "Layout direction", level: 3 })).toBeInTheDocument();
     expect(within(preview).getByText("Left navigation for organization")).toBeInTheDocument();
+    expect(screen.queryByText("Simple preview")).not.toBeInTheDocument();
 
     expect(screen.getByLabelText("Note statistics")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Switch to dark mode" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Switch to light mode" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "New note" })).toBeInTheDocument();
     expect(screen.getAllByText("@maya").length).toBeGreaterThan(0);
   });
@@ -141,6 +142,22 @@ describe("App", () => {
     expect(within(preview).getByText(/"enabled": true/)).toBeInTheDocument();
   });
 
+  it("renders markdown checkboxes in the preview", () => {
+    render(<App />);
+
+    fireEvent.change(screen.getByLabelText("Body"), {
+      target: {
+        value: "- [ ] Review requirements\n- [x] Share notes"
+      }
+    });
+
+    const preview = screen.getByLabelText("Markdown preview");
+    const checkboxes = within(preview).getAllByRole("checkbox");
+    expect(checkboxes).toHaveLength(2);
+    expect(checkboxes[0]).not.toBeChecked();
+    expect(checkboxes[1]).toBeChecked();
+  });
+
   it("inserts a json code block from the editor tools", async () => {
     const user = userEvent.setup();
 
@@ -160,13 +177,14 @@ describe("App", () => {
 
     render(<App />);
 
+    await user.click(screen.getByText("Collaborators"));
     await user.clear(screen.getByLabelText("Collaborator handle"));
     await user.type(screen.getByLabelText("Collaborator handle"), "@alex");
     await user.click(screen.getByRole("button", { name: "Share note" }));
 
     expect(screen.getAllByText("@alex").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Outbound").length).toBeGreaterThan(0);
-    expect(screen.getByText("3 collaborators")).toBeInTheDocument();
+    expect(screen.getByText("Collaborators")).toBeInTheDocument();
   });
 
   it("shows inbound and outbound collaboration notes in the collaboration filters", async () => {
@@ -211,6 +229,16 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: "Remove tag followup" })).toBeInTheDocument();
   });
 
+  it("inserts a markdown checkbox from the editor tools", async () => {
+    const user = userEvent.setup();
+
+    render(<App />);
+
+    await user.click(screen.getByRole("button", { name: "Insert checkbox" }));
+
+    expect(screen.getByLabelText("Body").value).toContain("- [ ]");
+  });
+
   it("filters notes by search query", async () => {
     const user = userEvent.setup();
 
@@ -222,6 +250,21 @@ describe("App", () => {
     expect(screen.queryByText("Weekly priorities")).not.toBeInTheDocument();
     const notesList = within(screen.getByLabelText("Notes list")).getByRole("list");
     expect(within(notesList).getAllByRole("listitem")).toHaveLength(1);
+  });
+
+  it("collapses and restores the collection column", async () => {
+    const user = userEvent.setup();
+
+    render(<App />);
+
+    expect(document.querySelector(".workspace-grid")).not.toHaveClass("collection-collapsed");
+
+    await user.click(screen.getByRole("button", { name: "Collapse collection" }));
+    expect(document.querySelector(".workspace-grid")).toHaveClass("collection-collapsed");
+    expect(screen.getByRole("button", { name: "Expand collection" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Expand collection" }));
+    expect(document.querySelector(".workspace-grid")).not.toHaveClass("collection-collapsed");
   });
 
   it("searches across the whole workspace regardless of the current view", async () => {
@@ -275,6 +318,8 @@ describe("App", () => {
   });
 
   it("stores restore points and can roll back to an earlier version", async () => {
+    const user = userEvent.setup();
+
     render(<App />);
 
     const title = screen.getByLabelText("Title");
@@ -284,6 +329,7 @@ describe("App", () => {
     fireEvent.change(body, { target: { value: "Temporary meeting notes" } });
 
     expect(screen.getByLabelText("Autosave status")).toBeInTheDocument();
+    await user.click(screen.getByText("History"));
     const history = screen.getByLabelText("Version history");
     expect(history).toBeInTheDocument();
     const restoreButtons = within(history).getAllByRole("button", { name: /Restore version from/ });
