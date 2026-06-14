@@ -1460,6 +1460,7 @@ export default function App() {
               </div>
             </div>
 
+          <div className="editor-scroll">
             {activeNote ? (
               <>
                 <label className="editor-field editor-title">
@@ -1478,14 +1479,10 @@ export default function App() {
                     aria-label="Body"
                     value={activeNote.content}
                     onChange={(event) => handleBodyChange(event.target.value)}
-                    placeholder={"Write in markdown. Use ```json for pasted code blocks."}
+                    placeholder="Write your note here."
                     rows={14}
                   />
                 </label>
-
-                <div className="editor-meta minimal">
-                  <span aria-label="Autosave status">Autosaved {formatDateTime(activeNote.updatedAt)}</span>
-                </div>
               </>
             ) : (
               <div className="empty-state editor-empty">
@@ -1496,6 +1493,22 @@ export default function App() {
                 </button>
               </div>
             )}
+          </div>
+
+          <div className="editor-footer" aria-label="Document statistics">
+            {activeNote && (
+              <>
+                <div className="editor-footer-stats">
+                  <span>Lines: <strong>{activeNote.content.split("\n").length}</strong></span>
+                  <span>Words: <strong>{activeNote.content.trim() ? activeNote.content.trim().split(/\s+/).length : 0}</strong></span>
+                  <span>Characters: <strong>{activeNote.content.length}</strong></span>
+                </div>
+                <div className="editor-footer-right">
+                  <span>{formatDateTime(activeNote.updatedAt)}</span>
+                </div>
+              </>
+            )}
+          </div>
           </section>
 
           <section

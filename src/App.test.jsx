@@ -311,7 +311,6 @@ describe("App", () => {
     fireEvent.change(title, { target: { value: "Changed title" } });
     fireEvent.change(body, { target: { value: "Temporary meeting notes" } });
 
-    expect(screen.getByLabelText("Autosave status")).toBeInTheDocument();
     await user.click(screen.getByText("History"));
     const history = screen.getByLabelText("Version history");
     expect(history).toBeInTheDocument();
