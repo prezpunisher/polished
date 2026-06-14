@@ -526,40 +526,40 @@ button {
   pointer-events: none;
 }
 
-.list-panel-toggle {
+.list-panel-expand {
   position: absolute;
-  top: 10px;
-  left: 255px;
-  transform: translateX(-50%);
-  z-index: 4;
-  display: inline-flex;
+  inset: 0;
+  z-index: 3;
+  display: flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
-  padding: 0;
-  border-radius: 50%;
-  border: 1px solid var(--border);
-  background: var(--panel-raised);
   color: var(--text-muted);
-  font-size: 0.72rem;
+  font-size: 1rem;
   cursor: pointer;
   transition: background-color 140ms ease, color 140ms ease;
 }
 
-.list-panel-toggle:hover {
-  background: var(--panel-hover);
+.list-panel-expand:hover {
+  background: var(--accent-soft);
   color: var(--text);
 }
 
-.list-panel-toggle span {
-  display: inline-block;
-  line-height: 1;
-  transition: transform 240ms cubic-bezier(0.4, 0, 0.2, 1);
+.list-panel-collapse {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  color: var(--text-muted);
+  font-size: 1rem;
+  flex-shrink: 0;
+  transition: background-color 140ms ease, color 140ms ease;
 }
 
-.list-panel-toggle.open span {
-  transform: rotate(180deg);
+.list-panel-collapse:hover {
+  background: var(--panel-hover);
+  color: var(--text);
 }
 
 .panel-head {
@@ -572,7 +572,7 @@ button {
 .panel-head-actions {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 6px;
 }
 
 .panel-toggle {

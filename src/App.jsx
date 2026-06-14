@@ -2,6 +2,21 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import "./style.css";
 
 const STORAGE_KEY = "polished-notes-app";
+const UI_KEY = "polished-ui";
+
+function loadUiPrefs() {
+  try {
+    const stored = window.localStorage?.getItem(UI_KEY);
+    if (stored) {
+      const p = JSON.parse(stored);
+      return {
+        collectionCollapsed: Boolean(p.collectionCollapsed),
+        inspectorCollapsed: Boolean(p.inspectorCollapsed)
+      };
+    }
+  } catch {}
+  return { collectionCollapsed: false, inspectorCollapsed: false };
+}
 const MAX_NOTE_VERSIONS = 20;
 
 const folderSeed = [
@@ -632,8 +647,8 @@ export default function App() {
   const [appState, setAppState] = useState(loadAppState);
   const [query, setQuery] = useState("");
   const [isCompact, setIsCompact] = useState(false);
-  const [isCollectionCollapsed, setIsCollectionCollapsed] = useState(false);
-  const [isInspectorCollapsed, setIsInspectorCollapsed] = useState(false);
+  const [isCollectionCollapsed, setIsCollectionCollapsed] = useState(() => loadUiPrefs().collectionCollapsed);
+  const [isInspectorCollapsed, setIsInspectorCollapsed] = useState(() => loadUiPrefs().inspectorCollapsed);
   const [openTabs, setOpenTabs] = useState(() => {
     const s = loadAppState();
     return s.activeId ? [s.activeId] : (s.notes[0]?.id ? [s.notes[0].id] : []);
@@ -681,6 +696,13 @@ export default function App() {
   useEffect(() => {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
   }, [appState]);
+
+  useEffect(() => {
+    window.localStorage.setItem(UI_KEY, JSON.stringify({
+      collectionCollapsed: isCollectionCollapsed,
+      inspectorCollapsed: isInspectorCollapsed
+    }));
+  }, [isCollectionCollapsed, isInspectorCollapsed]);
 
   useEffect(() => {
     function handleScroll() {
@@ -1372,16 +1394,17 @@ export default function App() {
             </div>
           </nav>
 
-          <button
-            type="button"
-            className={`list-panel-toggle ${!isCollectionCollapsed ? "open" : ""}`}
-            onClick={() => setIsCollectionCollapsed((v) => !v)}
-            aria-label={isCollectionCollapsed ? "Expand collection" : "Collapse collection"}
-          >
-            <span aria-hidden="true">›</span>
-          </button>
-
           <section className={`list-panel${isCollectionCollapsed ? " list-panel--collapsed" : ""}`} aria-label="Notes list">
+            {isCollectionCollapsed && (
+              <button
+                type="button"
+                className="list-panel-expand"
+                onClick={() => setIsCollectionCollapsed(false)}
+                aria-label="Expand collection"
+              >
+                <span aria-hidden="true">›</span>
+              </button>
+            )}
             <div className="list-panel-content">
               <div className="panel-head">
                 <div>
@@ -1390,6 +1413,14 @@ export default function App() {
                 </div>
                 <div className="panel-head-actions">
                   <span>{query.trim() ? "Across workspace" : `${visibleNotes.length} shown`}</span>
+                  <button
+                    type="button"
+                    className="list-panel-collapse"
+                    onClick={() => setIsCollectionCollapsed(true)}
+                    aria-label="Collapse collection"
+                  >
+                    ‹
+                  </button>
                 </div>
               </div>
 
