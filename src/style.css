@@ -689,23 +689,25 @@ button {
 .tab-bar {
   display: flex;
   align-items: center;
-  height: 40px;
+  height: 38px;
   border-bottom: 1px solid var(--border);
   background: var(--panel);
   position: sticky;
   top: 0;
   z-index: 3;
-  overflow: hidden;
+  padding: 0 6px;
+  gap: 4px;
 }
 
 .tab-list {
   display: flex;
-  align-items: stretch;
+  align-items: center;
   flex: 1;
   min-width: 0;
   overflow-x: auto;
   scrollbar-width: none;
   height: 100%;
+  gap: 2px;
 }
 
 .tab-list::-webkit-scrollbar {
@@ -715,45 +717,59 @@ button {
 .tab {
   display: flex;
   align-items: center;
-  height: 100%;
-  min-width: 80px;
-  max-width: 180px;
+  height: 26px;
+  min-width: 72px;
+  max-width: 200px;
   flex-shrink: 0;
-  border-right: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0 6px 0 10px;
   color: var(--text-muted);
   font-size: 0.84rem;
+  transition: color 120ms ease;
 }
 
 .tab.active {
-  background: var(--canvas);
+  background: var(--panel-raised);
   color: var(--text);
-  box-shadow: inset 0 -2px 0 var(--accent);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.10);
+}
+
+.tab:hover:not(.active) {
+  color: var(--text-soft);
 }
 
 .tab-label {
   flex: 1;
   min-width: 0;
   height: 100%;
-  padding: 0 4px 0 12px;
+  padding: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   text-align: left;
   color: inherit;
+  line-height: 26px;
 }
 
 .tab-close {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 22px;
-  height: 22px;
-  margin-right: 6px;
+  width: 16px;
+  height: 16px;
+  margin-left: 2px;
   border-radius: 50%;
-  font-size: 0.9rem;
+  font-size: 0.78rem;
   color: var(--text-muted);
   flex-shrink: 0;
   line-height: 1;
+  opacity: 0;
+  transition: opacity 120ms ease, background-color 120ms ease;
+}
+
+.tab:hover .tab-close,
+.tab.active .tab-close {
+  opacity: 1;
 }
 
 .tab-close:hover {
@@ -764,24 +780,22 @@ button {
 .tab-bar-end {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 0 10px;
+  gap: 4px;
+  padding: 0 2px;
   flex-shrink: 0;
-  border-left: 1px solid var(--border);
-  height: 100%;
 }
 
 .tab-new-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
-  border: 1px solid var(--border);
-  background: var(--panel);
+  border: none;
+  background: transparent;
   color: var(--text-muted);
-  font-size: 1.1rem;
+  font-size: 1.2rem;
   line-height: 1;
 }
 
@@ -794,11 +808,11 @@ button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
-  border: 1px solid var(--border);
-  background: var(--panel);
+  border: none;
+  background: transparent;
   color: var(--text-muted);
   font-size: 0.72rem;
   cursor: pointer;
