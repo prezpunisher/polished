@@ -1680,9 +1680,7 @@ export default function App() {
                   </div>
                 </details>
 
-                <section className="preview-panel" aria-label="Markdown preview">
-                  <div className="markdown-preview">{renderMarkdownPreview(activeNote.content)}</div>
-                </section>
+
               </>
             ) : (
               <div className="empty-state editor-empty">
