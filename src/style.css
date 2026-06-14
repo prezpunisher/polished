@@ -1,22 +1,22 @@
 :root {
-  color: #d9dee7;
-  background: #101318;
-  font-family: "Avenir Next", "Inter", "Segoe UI", sans-serif;
+  color: #1f1f1f;
+  background: #efefef;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
-  --bg: #101318;
-  --canvas: #161a21;
-  --panel: #1b2029;
-  --panel-raised: #202632;
-  --panel-hover: #252c39;
-  --border: #2d3440;
-  --border-strong: #3a4453;
-  --text: #d9dee7;
-  --text-soft: #a8b1bf;
-  --text-muted: #7b8594;
-  --accent: #8aa3ff;
-  --accent-soft: rgba(138, 163, 255, 0.16);
-  --shadow: rgba(0, 0, 0, 0.3);
+  --bg: #efefef;
+  --canvas: #ffffff;
+  --panel: #f5f5f5;
+  --panel-raised: #ffffff;
+  --panel-hover: #e9e9e9;
+  --border: #d0d0d0;
+  --border-strong: #b8b8b8;
+  --text: #1f1f1f;
+  --text-soft: #4b4b4b;
+  --text-muted: #727272;
+  --accent: #7d7d7d;
+  --accent-soft: rgba(80, 80, 80, 0.08);
+  --shadow: rgba(0, 0, 0, 0);
 }
 
 * {
@@ -26,16 +26,13 @@
 html,
 body,
 #root {
-  min-height: 100%;
+  height: 100%;
 }
 
 body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
-  background-image:
-    radial-gradient(circle at top left, rgba(138, 163, 255, 0.08), transparent 28%),
-    radial-gradient(circle at bottom right, rgba(81, 115, 173, 0.08), transparent 26%);
 }
 
 button,
@@ -53,29 +50,30 @@ button {
 }
 
 .app-shell {
-  min-height: 100vh;
+  height: 100vh;
   padding: 0;
   background: var(--bg);
+  overflow: hidden;
 }
 
 .theme-light.app-shell {
-  --bg: #eeece6;
-  --canvas: #f8f6f2;
-  --panel: #f2efe8;
-  --panel-raised: #faf8f5;
-  --panel-hover: #e8e3da;
-  --border: #d7d0c3;
-  --border-strong: #c8c0b0;
-  --text: #2d3037;
-  --text-soft: #525861;
-  --text-muted: #7a7f88;
-  --accent: #5c78d9;
-  --accent-soft: rgba(92, 120, 217, 0.15);
-  --shadow: rgba(42, 47, 56, 0.08);
-  background: #eeece6;
-  background-image:
-    radial-gradient(circle at top left, rgba(92, 120, 217, 0.08), transparent 30%),
-    radial-gradient(circle at bottom right, rgba(140, 128, 108, 0.08), transparent 24%);
+  background: var(--bg);
+}
+
+.theme-dark.app-shell {
+  --bg: #202020;
+  --canvas: #262626;
+  --panel: #2b2b2b;
+  --panel-raised: #303030;
+  --panel-hover: #343434;
+  --border: #3c3c3c;
+  --border-strong: #4c4c4c;
+  --text: #ececec;
+  --text-soft: #c7c7c7;
+  --text-muted: #a1a1a1;
+  --accent: #9a9a9a;
+  --accent-soft: rgba(210, 210, 210, 0.08);
+  background: #202020;
 }
 
 .backdrop {
@@ -83,8 +81,11 @@ button {
 }
 
 .notes-app {
-  width: min(1440px, 100%);
+  width: 100%;
   margin: 0 auto;
+  height: 100vh;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
 }
 
 .topbar,
@@ -94,7 +95,8 @@ button {
 .preview-panel {
   background: var(--panel);
   border: 1px solid var(--border);
-  box-shadow: 0 10px 24px var(--shadow);
+  box-shadow: none;
+  border-radius: 8px;
 }
 
 .topbar {
@@ -105,16 +107,15 @@ button {
   grid-template-columns: minmax(180px, 240px) minmax(260px, 1fr) auto;
   gap: 12px;
   align-items: center;
-  padding: 14px 22px;
+  padding: 10px 14px;
   border: 0;
   border-bottom: 1px solid var(--border);
-  border-radius: 0;
-  background: rgba(21, 25, 32, 0.92);
-  backdrop-filter: blur(12px);
+  border-radius: 8px 8px 0 0;
+  background: var(--panel);
 }
 
 .topbar.compact {
-  padding: 12px 22px;
+  padding: 10px 14px;
 }
 
 .brand {
@@ -129,12 +130,12 @@ button {
   place-items: center;
   width: 34px;
   height: 34px;
-  border-radius: 8px;
-  background: linear-gradient(160deg, rgba(138, 163, 255, 0.16), rgba(138, 163, 255, 0.04));
-  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  background: var(--panel-raised);
+  border: 1px solid var(--border);
   font-size: 16px;
   font-weight: 700;
-  color: #c9d6ff;
+  color: var(--text);
 }
 
 .brand h1,
@@ -151,10 +152,10 @@ button {
 .editor-field span {
   margin: 0;
   color: var(--text-muted);
-  font-size: 0.69rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: none;
 }
 
 .search {
@@ -168,7 +169,7 @@ button {
 .editor-field select {
   width: 100%;
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 6px;
   background: var(--canvas);
   color: var(--text);
   outline: none;
@@ -179,9 +180,9 @@ button {
 }
 
 .search input {
-  height: 40px;
-  padding: 0 14px;
-  background: var(--panel-raised);
+  height: 34px;
+  padding: 0 10px;
+  background: var(--canvas);
 }
 
 .editor-field input,
@@ -192,9 +193,9 @@ button {
 
 .editor-field textarea {
   min-height: 420px;
-  padding: 14px 0 18px;
+  padding: 10px 0 16px;
   resize: vertical;
-  line-height: 1.72;
+  line-height: 1.65;
 }
 
 .search input:focus,
@@ -225,7 +226,7 @@ button {
 .danger-action {
   height: 34px;
   padding: 0 12px;
-  border-radius: 8px;
+  border-radius: 6px;
   border: 1px solid var(--border);
   transition:
     background-color 140ms ease,
@@ -233,25 +234,23 @@ button {
 }
 
 .primary-action {
-  background: rgba(138, 163, 255, 0.14);
-  border-color: rgba(138, 163, 255, 0.3);
-  color: #d7e0ff;
+  background: var(--panel-raised);
+  border-color: var(--border-strong);
+  color: var(--text);
 }
 
 .ghost-action {
-  background: var(--panel-raised);
+  background: var(--panel);
 }
 
 .danger-action {
-  background: rgba(160, 71, 71, 0.14);
-  border-color: rgba(160, 71, 71, 0.26);
-  color: #ffb4b4;
+  background: var(--panel);
+  border-color: var(--border);
+  color: #8a2b2b;
 }
 
-.theme-light .danger-action {
-  background: rgba(163, 63, 51, 0.1);
-  border-color: rgba(163, 63, 51, 0.2);
-  color: #98453d;
+.theme-dark .danger-action {
+  color: #ffb6b6;
 }
 
 .primary-action:hover,
@@ -264,9 +263,9 @@ button {
 }
 
 .primary-action:hover {
-  background: rgba(138, 163, 255, 0.22);
-  border-color: rgba(138, 163, 255, 0.36);
-  color: #eef2ff;
+  background: var(--panel-hover);
+  border-color: var(--border-strong);
+  color: var(--text);
 }
 
 .workspace-grid {
@@ -274,28 +273,30 @@ button {
   grid-template-columns: 255px 330px minmax(0, 1fr);
   gap: 0;
   margin-top: 0;
-  align-items: start;
+  align-items: stretch;
+  min-height: 0;
 }
 
 .workspace-grid.collection-collapsed {
-  grid-template-columns: 240px minmax(0, 1fr);
+  grid-template-columns: 255px minmax(0, 1fr);
 }
 
 .sidebar,
 .list-panel,
 .editor-panel {
-  border-radius: 0;
+  border-radius: 0 0 8px 8px;
+  min-height: 0;
 }
 
 .sidebar {
-  position: sticky;
-  top: 59px;
-  padding: 18px 16px;
-  min-height: calc(100vh - 59px);
+  position: relative;
+  padding: 10px 10px 14px;
+  height: 100%;
   border-top: 0;
   border-left: 0;
   border-bottom: 0;
-  background: rgba(19, 23, 30, 0.9);
+  background: var(--panel);
+  overflow-y: auto;
 }
 
 .sidebar-section + .sidebar-section {
@@ -310,9 +311,76 @@ button {
   margin-bottom: 10px;
 }
 
+.section-heading-copy {
+  display: grid;
+  gap: 2px;
+}
+
 .section-heading span {
   color: var(--text-muted);
   font-size: 0.8rem;
+}
+
+.sidebar-inline-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
+  margin: 2px 0 10px;
+}
+
+.sidebar-inline-form input {
+  width: 100%;
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--canvas);
+  color: var(--text);
+  outline: none;
+}
+
+.inline-add {
+  height: 30px;
+  min-width: 44px;
+  padding: 0 10px;
+}
+
+.section-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text-muted);
+  flex: 0 0 auto;
+}
+
+.section-toggle span {
+  display: inline-block;
+  font-size: 0.74rem;
+  line-height: 1;
+  transform: rotate(-90deg);
+  transition: transform 140ms ease;
+}
+
+.section-toggle.open span {
+  transform: rotate(0deg);
+}
+
+.section-toggle:hover {
+  background: var(--panel-hover);
+  color: var(--text);
+}
+
+.sidebar-section-body {
+  display: grid;
+}
+
+.sidebar-section-body .nav-item:first-child {
+  margin-top: 2px;
 }
 
 .nav-item {
@@ -322,7 +390,7 @@ button {
   gap: 10px;
   width: 100%;
   padding: 10px 12px;
-  border-radius: 8px;
+  border-radius: 6px;
   color: var(--text-soft);
   text-align: left;
 }
@@ -332,9 +400,9 @@ button {
 }
 
 .nav-item.active {
-  background: linear-gradient(180deg, rgba(138, 163, 255, 0.14), rgba(138, 163, 255, 0.06));
+  background: var(--panel-hover);
   color: var(--text);
-  box-shadow: inset 0 0 0 1px rgba(138, 163, 255, 0.22);
+  box-shadow: inset 2px 0 0 var(--text);
 }
 
 .nav-item span {
@@ -377,8 +445,8 @@ button {
 
 .sidebar-callout {
   margin-top: 18px;
-  padding: 14px 12px 0;
-  border-radius: 0;
+  padding: 12px 10px 0;
+  border-radius: 6px;
   background: transparent;
   border: 0;
   border-top: 1px solid var(--border);
@@ -401,19 +469,20 @@ button {
   justify-content: center;
   min-width: 22px;
   padding: 2px 6px;
-  border-radius: 6px;
+  border-radius: 4px;
   background: var(--panel-raised);
   border: 1px solid var(--border);
   font-size: 0.8rem;
 }
 
 .list-panel {
-  padding: 16px;
-  min-height: calc(100vh - 59px);
+  padding: 10px 12px 14px;
+  height: 100%;
   border-top: 0;
   border-left: 0;
   border-bottom: 0;
-  background: rgba(24, 29, 37, 0.88);
+  background: var(--panel);
+  overflow-y: auto;
 }
 
 .workspace-grid.collection-collapsed .list-panel {
@@ -434,8 +503,9 @@ button {
 }
 
 .panel-toggle {
-  height: 30px;
-  padding: 0 10px;
+  width: 24px;
+  height: 24px;
+  padding: 0;
 }
 
 .panel-head span,
@@ -461,8 +531,8 @@ button {
   display: grid;
   gap: 8px;
   width: 100%;
-  padding: 12px 12px 13px;
-  border-radius: 12px;
+  padding: 10px 10px 12px;
+  border-radius: 8px;
   text-align: left;
   color: var(--text);
   border: 1px solid transparent;
@@ -470,9 +540,9 @@ button {
 }
 
 .note-card.active {
-  background: linear-gradient(180deg, rgba(138, 163, 255, 0.12), rgba(138, 163, 255, 0.05));
-  border-color: rgba(138, 163, 255, 0.18);
-  box-shadow: inset 0 0 0 1px rgba(138, 163, 255, 0.14);
+  background: var(--panel-hover);
+  border-color: var(--border);
+  box-shadow: inset 2px 0 0 var(--text);
 }
 
 .note-card-head,
@@ -536,13 +606,13 @@ button {
 
 .editor-panel {
   padding: 0;
-  overflow: hidden;
+  overflow-y: auto;
   background: var(--canvas);
-  min-height: calc(100vh - 59px);
+  height: 100%;
   border-top: 0;
   border-right: 0;
   border-bottom: 0;
-  background: linear-gradient(180deg, rgba(24, 29, 38, 0.92), rgba(21, 26, 33, 0.94));
+  background: var(--canvas);
 }
 
 .editor-top {
@@ -550,9 +620,12 @@ button {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 16px 22px;
+  padding: 10px 14px;
   border-bottom: 1px solid var(--border);
-  background: rgba(20, 24, 31, 0.76);
+  background: var(--panel);
+  position: sticky;
+  top: 0;
+  z-index: 2;
 }
 
 .meta-row {
@@ -594,7 +667,7 @@ button {
   height: 38px;
   padding: 0 12px;
   border: 1px solid var(--border);
-  border-radius: 0;
+  border-radius: 6px;
   background: var(--canvas);
   color: var(--text);
   outline: none;
@@ -620,6 +693,7 @@ button {
   border: 1px solid var(--border);
   background: var(--panel);
   color: var(--text-soft);
+  border-radius: 999px;
 }
 
 .share-chip strong {
@@ -645,7 +719,7 @@ button {
 .color-chip {
   width: 22px;
   height: 22px;
-  border-radius: 999px;
+  border-radius: 6px;
   border: 2px solid transparent;
   background: var(--chip-color);
 }
@@ -656,7 +730,7 @@ button {
 
 .editor-title,
 .editor-body {
-  padding: 22px 28px 0;
+  padding: 16px 18px 0;
 }
 
 .editor-tools {
@@ -683,21 +757,21 @@ button {
   border-radius: 0;
   background: transparent;
   box-shadow: none;
-  font-size: 2.35rem;
+  font-size: 1.9rem;
   font-weight: 700;
-  letter-spacing: -0.04em;
-  line-height: 1.05;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
 }
 
 .editor-body textarea {
-  min-height: 460px;
+  min-height: 440px;
   padding: 0;
   border: 0;
   border-radius: 0;
   background: transparent;
   box-shadow: none;
-  font-size: 1.01rem;
-  font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+  font-size: 0.98rem;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   color: var(--text);
 }
 
@@ -705,7 +779,7 @@ button {
   display: flex;
   flex-wrap: wrap;
   gap: 8px 14px;
-  padding: 16px 28px 0;
+  padding: 12px 18px 0;
   color: var(--text-muted);
   font-size: 0.84rem;
 }
@@ -715,7 +789,7 @@ button {
 }
 
 .editor-drawer {
-  margin: 12px 28px 0;
+  margin: 10px 18px 0;
   border-top: 1px solid var(--border);
 }
 
@@ -788,9 +862,9 @@ button {
 }
 
 .preview-panel {
-  margin: 24px 28px 28px;
-  padding: 20px 0 0;
-  border-radius: 0;
+  margin: 18px;
+  padding: 12px 0 0;
+  border-radius: 8px;
   background: transparent;
   border-left: 0;
   border-right: 0;
@@ -800,8 +874,8 @@ button {
 .markdown-preview {
   margin-top: 0;
   color: var(--text-soft);
-  line-height: 1.72;
-  font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+  line-height: 1.65;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
 .markdown-preview h3,
@@ -852,7 +926,7 @@ button {
 
 .markdown-preview code {
   padding: 2px 6px;
-  border-radius: 0;
+  border-radius: 4px;
   background: var(--canvas);
   border: 1px solid var(--border);
   color: var(--text);
@@ -861,8 +935,8 @@ button {
 .preview-code-block {
   overflow: hidden;
   border: 1px solid var(--border);
-  border-radius: 12px;
-  background: rgba(16, 19, 24, 0.88);
+  border-radius: 8px;
+  background: var(--panel);
 }
 
 .preview-code-label {
@@ -872,14 +946,14 @@ button {
   font-size: 0.7rem;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.02em;
 }
 
 .preview-code-block pre {
   margin: 0;
   padding: 14px;
   overflow-x: auto;
-  background: rgba(12, 15, 19, 0.7);
+  background: var(--canvas);
 }
 
 .preview-code-block code {
@@ -894,14 +968,6 @@ button {
   white-space: pre;
 }
 
-.theme-light .preview-code-block {
-  background: rgba(215, 219, 227, 0.4);
-}
-
-.theme-light .preview-code-block pre {
-  background: rgba(255, 255, 255, 0.45);
-}
-
 .markdown-preview a {
   color: var(--accent);
 }
@@ -913,23 +979,31 @@ button {
 }
 
 @media (max-width: 920px) {
+  .app-shell,
+  .notes-app {
+    height: auto;
+  }
+
   .topbar {
     grid-template-columns: 1fr;
   }
 
   .workspace-grid {
     grid-template-columns: 1fr;
+    min-height: auto;
   }
 
   .sidebar {
     position: static;
-    min-height: auto;
+    height: auto;
     border-right: 0;
+    overflow: visible;
   }
 
   .list-panel,
   .editor-panel {
-    min-height: auto;
+    height: auto;
+    overflow: visible;
   }
 }
 
