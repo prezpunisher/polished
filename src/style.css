@@ -65,7 +65,6 @@ button {
   height: 100vh;
 }
 
-.topbar,
 .sidebar,
 .list-panel,
 .editor-panel,
@@ -74,40 +73,6 @@ button {
   border: 1px solid var(--border);
   box-shadow: none;
   border-radius: 8px;
-}
-
-.topbar {
-  position: sticky;
-  top: 0;
-  z-index: 5;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  padding: 7px 14px;
-  border: 0;
-  border-bottom: 1px solid var(--border);
-  border-radius: 8px 8px 0 0;
-  background: var(--panel);
-}
-
-.topbar.compact {
-  padding: 4px 14px;
-}
-
-
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 0;
-}
-
-
-.panel-head h3,
-.inspector-head h3 {
-  margin: 0;
-  font-size: 1rem;
-  font-weight: 700;
 }
 
 .eyebrow,
@@ -180,7 +145,6 @@ button {
   color: var(--text-muted);
 }
 
-.toolbar-actions,
 .color-row {
   display: flex;
   flex-wrap: wrap;
@@ -287,13 +251,6 @@ button {
   flex-shrink: 0;
   padding: 8px 12px 10px;
   border-top: 1px solid var(--border);
-}
-
-.settings-popover--up {
-  top: auto;
-  bottom: calc(100% + 8px);
-  left: 0;
-  right: auto;
 }
 
 .electron-app .sidebar {
@@ -611,13 +568,6 @@ button {
   pointer-events: none;
 }
 
-.panel-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
 .collection-panel-actions {
   display: flex;
   align-items: center;
@@ -628,23 +578,13 @@ button {
   font-size: 0.78rem;
 }
 
-.panel-head-actions {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.panel-head span,
-.panel-summary {
-  color: var(--text-muted);
-  font-size: 0.82rem;
-}
-
 .panel-summary {
   display: flex;
   gap: 10px;
   padding: 6px 0 10px;
   border-bottom: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 0.82rem;
 }
 
 .note-list {
@@ -1175,10 +1115,6 @@ button {
     height: auto;
   }
 
-  .topbar {
-    grid-template-columns: 1fr;
-  }
-
   .workspace-grid {
     grid-template-columns: 1fr;
     min-height: auto;
@@ -1204,7 +1140,6 @@ button {
     padding: 0;
   }
 
-  .topbar,
   .sidebar,
   .list-panel,
   .editor-panel,
@@ -1252,11 +1187,6 @@ button {
   border-color: transparent;
 }
 
-.topbar {
-  border-bottom-color: var(--border);
-  background: #1c1c1e;
-}
-
 .inspector-panel {
   background: #242426;
   border-color: transparent;
@@ -1269,10 +1199,6 @@ button {
 }
 
 /* ─── Settings popover ─────────────────────── */
-
-.settings-wrap {
-  position: relative;
-}
 
 .settings-btn {
   display: inline-flex;
@@ -1481,34 +1407,10 @@ button {
 
 /* ─── Checklist editor ───────────────────────── */
 
-.tab-checklist-icon {
-  font-size: 0.72rem;
-  opacity: 0.7;
-}
-
 .checklist-editor {
   padding: 20px 24px 32px;
   display: grid;
   gap: 0;
-}
-
-.checklist-actions {
-  display: flex;
-  gap: 6px;
-  margin-bottom: 18px;
-  flex-wrap: wrap;
-}
-
-.checklist-action-btn {
-  font-size: 0.78rem;
-  height: 26px;
-  padding: 0 10px;
-}
-
-.checklist-action-btn.cl-active {
-  background: var(--accent-soft);
-  border-color: var(--accent);
-  color: var(--accent);
 }
 
 .checklist-editor-title {
@@ -1741,11 +1643,6 @@ button {
   backdrop-filter: blur(20px) saturate(160%);
   -webkit-backdrop-filter: blur(20px) saturate(160%);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
-}
-.topbar {
-  background: rgba(28, 28, 30, 0.82);
-  backdrop-filter: blur(20px) saturate(160%);
-  -webkit-backdrop-filter: blur(20px) saturate(160%);
 }
 .tab-bar {
   background: rgba(30, 30, 32, 0.82);

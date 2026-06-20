@@ -1,29 +1,30 @@
 # Polished Notes App
 
-A local-first React notes workspace for fast meeting notes, one-off capture, and later retrieval. Runs in the browser during development and can be packaged as a standalone macOS app via Electron.
+A local-first React notes workspace for fast meeting notes, task lists, one-off capture, and later retrieval. Runs in the browser during development and can be packaged as a standalone macOS app via Electron.
 
 ## Features
 
-- Global search across the workspace
-- User-created folders
-- Collaboration filters for shared notes
-- Pin, favorite, archive, and trash states
+- Notes and task lists (checklists) in a unified workspace
+- Global search across the entire workspace
+- User-created folders for note organisation
+- Pin, favorite, archive, and trash states for both notes and tasks
+- Unified archive and trash views (notes and tasks together)
 - Auto-generated note titles from body content
-- Markdown checkboxes
-- Tag chips and collaborator chips
-- Local autosave and note restore history
+- Markdown checkboxes in notes
+- Tag chips and collaborator chips on notes
+- Local autosave and version history per note
 - Per-note tabs in the editor (open, switch, close)
-- Collapsible collection column and inspector panel (slide animation)
-- Collapsible workspace sections in sidebar
-- Light and dark mode
-- Local persistence with `localStorage`
+- Collapsible collection column and inspector panel (animated)
+- Collapsible sidebar sections (Workspace, Folders, Collaboration)
+- Line number toggle (Settings → Editor)
+- Dark mode only — bear/glass visual style
 
 ## Design Language
 
 The UI uses a **pill/circle** design language:
 - Text buttons and inputs: `border-radius: 999px` (pill)
 - Icon buttons and color swatches: `border-radius: 50%` (circle)
-- Previous style was **rounded rectangle** (`border-radius: 6px`) — revert by swapping values in `style.css`
+- Single dark theme — bear gradient background with glass panels
 
 ## Tech
 
@@ -81,13 +82,22 @@ polished/
   electron/
     main.js           ← Electron main process
   src/
-    App.jsx           ← All app logic and UI
-    style.css         ← All styles
+    App.jsx           ← State, effects, handlers, and top-level layout
+    style.css         ← All styles (single bear/glass dark system)
     main.jsx
     App.test.jsx
-    test/setup.js
-  vite.config.js      ← base: './' for Electron compatibility
-  HOW_TO_OPEN_POLISHED.md
-  POLISHED_CHAT_SUMMARY.md
-  NOTES.md
+    components/
+      Sidebar.jsx         ← Navigation, folders, settings popover
+      CollectionPanel.jsx ← Note/task list with search and filters
+      EditorPanel.jsx     ← Tab bar, note editor, checklist editor
+      InspectorPanel.jsx  ← Tags, details, collaborators, version history
+      NoteCard.jsx        ← Note list card
+      TaskCard.jsx        ← Task list card
+    lib/
+      constants.js    ← Shared constants (STORAGE_KEY, colorOptions, etc.)
+      filters.js      ← matchesQuery, filterNotes, sortNotes, formatDateTime
+      markdown.js     ← deriveTitleFromContent, renderMarkdown, shouldStoreVersion
+      normalizers.js  ← Data shape normalizers (note, folder, checklist, etc.)
+      seed.js         ← Default seed data
+      storage.js      ← localStorage load/save helpers
 ```

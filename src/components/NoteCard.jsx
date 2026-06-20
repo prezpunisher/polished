@@ -1,4 +1,6 @@
-export default function NoteCard({ note, isActive, onClick, formatDateTime, previewText }) {
+import { formatDateTime, previewText } from "../lib/filters.js";
+
+export default function NoteCard({ note, isActive, onClick }) {
   return (
     <button type="button" role="listitem" className={`note-card ${isActive ? "active" : ""}`} onClick={onClick}>
       <div className="note-card-head">
