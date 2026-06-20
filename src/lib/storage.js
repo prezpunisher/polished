@@ -12,7 +12,7 @@ function normalizeView(view) {
   }
 
   if (
-    ["all", "pinned", "favorites", "shared", "inbound", "outbound", "archive", "trash", "tasks"].includes(
+    ["all", "notes", "tasks", "pinned", "favorites", "shared", "inbound", "outbound", "archive", "trash"].includes(
       view.kind
     )
   ) {

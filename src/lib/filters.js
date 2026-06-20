@@ -69,46 +69,6 @@ export function sortNotes(notes, viewKind = "all") {
   });
 }
 
-export function getViewLabel(view, folders) {
-  if (view.kind === "folder") {
-    return folders.find((folder) => folder.id === view.id)?.name || "Folder";
-  }
-
-  const labels = {
-    all: "All",
-    notes: "Notes",
-    pinned: "Pinned",
-    favorites: "Favorites",
-    shared: "Shared notes",
-    inbound: "Shared to you",
-    outbound: "Shared by you",
-    archive: "Archive",
-    trash: "Trash"
-  };
-
-  return labels[view.kind] || "All";
-}
-
-export function getSearchScopeLabel(note) {
-  if (note.isDeleted) {
-    return "Trash";
-  }
-
-  if (note.isArchived) {
-    return "Archive";
-  }
-
-  if (note.isPinned) {
-    return "Pinned";
-  }
-
-  if (note.isFavorite) {
-    return "Favorites";
-  }
-
-  return "Active";
-}
-
 export function formatDateTime(value) {
   return new Date(value).toLocaleString("en-US", {
     month: "short",
