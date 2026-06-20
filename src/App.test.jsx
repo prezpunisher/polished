@@ -185,6 +185,43 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: "Meeting archive" })).toBeInTheDocument();
   });
 
+  it("does not allow deleting the last remaining folder", async () => {
+    const user = userEvent.setup();
+
+    mockStorage({
+      activeView: { kind: "folder", id: "folder-only" },
+      activeId: "note-1",
+      activeChecklistId: null,
+      folders: [{ id: "folder-only", name: "Only", color: "sky" }],
+      notes: [{
+        id: "note-1",
+        title: "Solo note",
+        content: "body",
+        tags: [],
+        collaborators: [],
+        folderId: "folder-only",
+        isPinned: false,
+        isFavorite: false,
+        isArchived: false,
+        isDeleted: false,
+        isTitleAuto: false,
+        color: "sky",
+        versions: [],
+        createdAt: "2026-06-20T00:00:00.000Z",
+        updatedAt: "2026-06-20T00:00:00.000Z"
+      }],
+      checklists: []
+    });
+
+    render(<App />);
+
+    const deleteFolderButton = screen.getByRole("button", { name: "Delete folder Only" });
+    expect(deleteFolderButton).toBeDisabled();
+
+    await user.click(deleteFolderButton);
+    expect(screen.getByRole("button", { name: "Only" })).toBeInTheDocument();
+  });
+
 
   it("filters notes by search query", async () => {
     const user = userEvent.setup();
@@ -257,6 +294,13 @@ describe("App", () => {
     expect(screen.getByText("Across workspace")).toBeInTheDocument();
   });
 
+  it("keeps pinned and favorite items ahead of newer items in the all view", () => {
+    const { container } = render(<App />);
+
+    const cards = Array.from(container.querySelectorAll(".note-list .note-card"));
+    expect(cards[0]?.textContent).toContain("Design the notes surface");
+  });
+
   it("switches between organization views and restores archived notes", async () => {
     const user = userEvent.setup();
 
@@ -324,7 +368,20 @@ describe("App", () => {
     await user.keyboard("{Control>}n{/Control}");
     expect(screen.getByLabelText("Title")).toHaveValue("Untitled Note");
   });
-});
+
+  it("registers the global keyboard shortcut listener only once", async () => {
+    const user = userEvent.setup();
+    const addSpy = vi.spyOn(window, "addEventListener");
+    const removeSpy = vi.spyOn(window, "removeEventListener");
+    const { unmount } = render(<App />);
+
+    await user.type(screen.getByLabelText("Body"), " updated");
+
+    expect(addSpy.mock.calls.filter(([type]) => type === "keydown")).toHaveLength(1);
+
+    unmount();
+    expect(removeSpy.mock.calls.filter(([type]) => type === "keydown")).toHaveLength(1);
+  });
 
   it("settings popover opens when gear button is clicked", async () => {
     const user = userEvent.setup();
@@ -333,3 +390,4 @@ describe("App", () => {
     await user.click(btn);
     expect(screen.getByText("Line numbers")).toBeInTheDocument();
   });
+});

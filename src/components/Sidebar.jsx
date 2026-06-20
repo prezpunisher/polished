@@ -156,7 +156,15 @@ export default function Sidebar({
                   </button>
                   <div className="folder-item-right">
                     <strong>{folder.count}</strong>
-                    <button type="button" className="folder-delete" aria-label={`Delete folder ${folder.name}`} onClick={() => onDeleteFolder(folder.id)}>×</button>
+                    <button
+                      type="button"
+                      className="folder-delete"
+                      aria-label={`Delete folder ${folder.name}`}
+                      onClick={() => onDeleteFolder(folder.id)}
+                      disabled={folderCounts.length <= 1}
+                    >
+                      ×
+                    </button>
                   </div>
                 </div>
               ))}

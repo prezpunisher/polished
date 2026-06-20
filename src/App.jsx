@@ -38,6 +38,7 @@ export default function App() {
   const searchRef = useRef(null);
   const titleRef = useRef(null);
   const checklistTitleRef = useRef(null);
+  const shortcutActionsRef = useRef(null);
 
   const { notes, folders, activeView, activeId, checklists } = appState;
   const activeTabChecklist = openTabs.includes(activeId)
@@ -94,17 +95,28 @@ export default function App() {
   }, [isCollectionCollapsed, isInspectorCollapsed, showLineNumbers]);
 
   useEffect(() => {
+    shortcutActionsRef.current = {
+      focusSearch: () => searchRef.current?.focus(),
+      createNote: handleCreateNote,
+      toggleFavorite,
+      togglePinned,
+    };
+  });
+
+  useEffect(() => {
     function handleShortcuts(e) {
       if (!e.metaKey && !e.ctrlKey) return;
       const key = e.key.toLowerCase();
-      if (key === "k") { e.preventDefault(); searchRef.current?.focus(); }
-      if (key === "n") { e.preventDefault(); handleCreateNote(); }
-      if (key === "f" && e.shiftKey) { e.preventDefault(); toggleFavorite(); }
-      if (key === "p" && e.shiftKey) { e.preventDefault(); togglePinned(); }
+      const actions = shortcutActionsRef.current;
+      if (!actions) return;
+      if (key === "k") { e.preventDefault(); actions.focusSearch(); }
+      if (key === "n") { e.preventDefault(); actions.createNote(); }
+      if (key === "f" && e.shiftKey) { e.preventDefault(); actions.toggleFavorite(); }
+      if (key === "p" && e.shiftKey) { e.preventDefault(); actions.togglePinned(); }
     }
     window.addEventListener("keydown", handleShortcuts);
     return () => window.removeEventListener("keydown", handleShortcuts);
-  });
+  }, []);
 
   // ── Note mutations ──────────────────────────────────────────────────────────
 
@@ -270,6 +282,9 @@ export default function App() {
 
   function deleteFolder(folderId) {
     setAppState((curr) => {
+      if (curr.folders.length <= 1) {
+        return curr;
+      }
       const remaining = curr.folders.filter((f) => f.id !== folderId);
       const fallbackId = remaining[0]?.id || null;
       return {

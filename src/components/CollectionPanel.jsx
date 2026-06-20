@@ -38,13 +38,17 @@ export default function CollectionPanel({
   onPermanentlyDeleteChecklist,
   searchRef,
 }) {
-  const sortedActiveTasks = [...checklists]
-    .filter((cl) => !cl.isTrashed && !cl.isArchived)
-    .sort((a, b) => {
+  function sortMixedItems(items) {
+    return [...items].sort((a, b) => {
       if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
       if (a.isFavorite !== b.isFavorite) return a.isFavorite ? -1 : 1;
       return new Date(b.updatedAt) - new Date(a.updatedAt);
     });
+  }
+
+  const sortedActiveTasks = sortMixedItems(
+    checklists.filter((cl) => !cl.isTrashed && !cl.isArchived)
+  );
 
   return (
     <section className={`list-panel${isCollectionCollapsed ? " list-panel--collapsed" : ""}`} aria-label="Notes list">
@@ -177,9 +181,7 @@ export default function CollectionPanel({
                 <div className="note-list" role="list">
                   {(() => {
                     const activeTasks = checklists.filter((cl) => !cl.isTrashed && !cl.isArchived);
-                    const allItems = [...visibleNotes, ...activeTasks].sort(
-                      (a, b) => new Date(b.updatedAt) - new Date(a.updatedAt)
-                    );
+                    const allItems = sortMixedItems([...visibleNotes, ...activeTasks]);
                     if (allItems.length === 0) {
                       return (
                         <div className="empty-state">

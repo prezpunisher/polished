@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { colorOptions } from "../lib/constants.js";
 import { normalizeTagValue, normalizeHandle } from "../lib/normalizers.js";
 import { formatDateTime } from "../lib/filters.js";
@@ -28,6 +28,11 @@ export default function InspectorPanel({
 }) {
   const [collaboratorInput, setCollaboratorInput] = useState("");
   const [tagInput, setTagInput] = useState("");
+
+  useEffect(() => {
+    setCollaboratorInput("");
+    setTagInput("");
+  }, [activeNote?.id, activeTabChecklist?.id]);
 
   function handleAddCollaborator() {
     if (!activeNote) return;
