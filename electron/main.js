@@ -11,7 +11,6 @@ function createWindow() {
     minHeight: 580,
     titleBarStyle: 'hiddenInset',
     trafficLightPosition: { x: 16, y: 16 },
-    vibrancy: 'under-window',
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -19,7 +18,8 @@ function createWindow() {
   })
 
   if (isDev) {
-    win.loadURL('http://localhost:5174')
+    const devUrl = process.env.VITE_DEV_SERVER_URL || 'http://localhost:5173'
+    win.loadURL(devUrl)
   } else {
     win.loadFile(path.join(__dirname, '../dist/index.html'))
   }

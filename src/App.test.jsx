@@ -331,5 +331,5 @@ describe("App", () => {
     render(<App />);
     const btn = screen.getByRole("button", { name: "Appearance settings" });
     await user.click(btn);
-    expect(screen.getByText("Light")).toBeInTheDocument();
+    expect(screen.getByText("Line numbers")).toBeInTheDocument();
   });

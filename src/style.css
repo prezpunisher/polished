@@ -1,25 +1,24 @@
 :root {
-  color: #1f1f1f;
-  background: #efefef;
+  color: #f0f0f0;
+  background: #1c1c1e;
   font-family: Helvetica, Arial, sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
-  --bg: #efefef;
-  --canvas: #ffffff;
-  --panel: #f5f5f5;
-  --panel-raised: #ffffff;
-  --panel-hover: #e9e9e9;
-  --border: #d0d0d0;
-  --border-strong: #b8b8b8;
-  --text: #1f1f1f;
-  --text-soft: #4b4b4b;
-  --text-muted: #727272;
-  --accent: #7d7d7d;
-  --accent-soft: rgba(80, 80, 80, 0.08);
-  /* active nav pill — themes can override all three */
-  --nav-active-bg: var(--panel-hover);
-  --nav-active-text: var(--text);
-  --nav-active-count: var(--text-muted);
+  --bg: #1c1c1e;
+  --canvas: #1e1e20;
+  --panel: rgba(28, 28, 30, 0.76);
+  --panel-raised: rgba(36, 36, 38, 0.92);
+  --panel-hover: #2a2a2c;
+  --border: #3a3a3c;
+  --border-strong: #48484a;
+  --text: #f0f0f0;
+  --text-soft: #c7c7cc;
+  --text-muted: #8e8e93;
+  --accent: #4762e8;
+  --accent-soft: rgba(71, 98, 232, 0.12);
+  --nav-active-bg: #4762e8;
+  --nav-active-text: #ffffff;
+  --nav-active-count: rgba(255, 255, 255, 0.65);
 }
 
 * {
@@ -55,25 +54,9 @@ button {
 .app-shell {
   height: 100vh;
   padding: 0;
-  background: var(--bg);
-  overflow: hidden;
-}
-
-.theme-dark.app-shell {
-  --bg: #202020;
-  --canvas: #262626;
-  --panel: #2b2b2b;
-  --panel-raised: #303030;
-  --panel-hover: #343434;
-  --border: #3c3c3c;
-  --border-strong: #4c4c4c;
-  --text: #ececec;
-  --text-soft: #c7c7c7;
-  --text-muted: #a1a1a1;
-  --accent: #9a9a9a;
-  --accent-soft: rgba(210, 210, 210, 0.08);
-  background: #202020;
+  background: radial-gradient(ellipse at 20% 0%, #1a1f3c 0%, #1c1c1e 55%);
   color: var(--text);
+  overflow: hidden;
 }
 
 .notes-app {
@@ -230,10 +213,6 @@ button {
 .danger-action {
   background: var(--panel);
   border-color: var(--border);
-  color: #8a2b2b;
-}
-
-.theme-dark .danger-action {
   color: #ffb6b6;
 }
 
@@ -1264,176 +1243,29 @@ button {
   }
 }
 
-/* ─── Themes ──────────────────────────────── */
-
-.theme-bear.app-shell {
-  --bg: #1c1c1e;
-  --canvas: #2c2c2e;
-  --panel: #1c1c1e;
-  --panel-raised: #2c2c2e;
-  --panel-hover: #3a3a3c;
-  --border: #38383a;
-  --border-strong: #4a4a4c;
-  --text: #ffffff;
-  --text-soft: rgba(255, 255, 255, 0.78);
-  --text-muted: rgba(255, 255, 255, 0.42);
-  --accent: #4762e8;
-  --accent-soft: rgba(71, 98, 232, 0.18);
-  --nav-active-bg: #4762e8;
-  --nav-active-text: #ffffff;
-  --nav-active-count: rgba(255, 255, 255, 0.65);
-  background: #1c1c1e;
-  color: #ffffff;
-}
-
-/* Bear: editor pane gets a slightly lighter bg so it lifts from the sidebar */
-.theme-bear .editor-panel {
+.editor-panel {
   background: #242426;
 }
 
-/* Bear: sidebar and list panel share the same bg — border between them removed */
-.theme-bear .sidebar,
-.theme-bear .list-panel {
+.sidebar,
+.list-panel {
   border-color: transparent;
 }
 
-/* Bear: topbar blends into the panel bg */
-.theme-bear .topbar {
-  border-bottom-color: #38383a;
+.topbar {
+  border-bottom-color: var(--border);
   background: #1c1c1e;
 }
 
-/* Bear: inspector gets a slightly raised bg */
-.theme-bear .inspector-panel {
+.inspector-panel {
   background: #242426;
   border-color: transparent;
 }
 
-/* Bear: active note card — uses accent blue with lighter text */
-.theme-bear .note-card.active p,
-.theme-bear .note-card.active .note-card-head span,
-.theme-bear .note-card.active .note-card-footer span {
+.note-card.active p,
+.note-card.active .note-card-head span,
+.note-card.active .note-card-footer span {
   color: rgba(255, 255, 255, 0.65);
-}
-
-.theme-warm.app-shell {
-  --bg: #f0ece5;
-  --canvas: #faf7f2;
-  --panel: #ede9e2;
-  --panel-raised: #faf7f2;
-  --panel-hover: #e4ded5;
-  --border: #d4cdc3;
-  --border-strong: #b8b0a5;
-  --text: #2d2318;
-  --text-soft: #5c4e3d;
-  --text-muted: #8a7a6a;
-  --accent: #c87a2e;
-  --accent-soft: rgba(200, 122, 46, 0.12);
-  background: #f0ece5;
-  color: #2d2318;
-}
-
-.theme-sepia.app-shell {
-  --bg: #f4efe8;
-  --canvas: #fdf9f3;
-  --panel: #ede8e0;
-  --panel-raised: #fdf9f3;
-  --panel-hover: #e5dfd5;
-  --border: #cec8bc;
-  --border-strong: #b0a898;
-  --text: #3d2b1a;
-  --text-soft: #6b5240;
-  --text-muted: #9a866e;
-  --accent: #8b6344;
-  --accent-soft: rgba(139, 99, 68, 0.12);
-  background: #f4efe8;
-  color: #3d2b1a;
-}
-
-.theme-ocean.app-shell {
-  --bg: #e8eef5;
-  --canvas: #f2f7fc;
-  --panel: #dce5ef;
-  --panel-raised: #f2f7fc;
-  --panel-hover: #d0dcea;
-  --border: #b8c8d8;
-  --border-strong: #8aaccc;
-  --text: #0f2030;
-  --text-soft: #2a4560;
-  --text-muted: #5a7a9a;
-  --accent: #2d7abf;
-  --accent-soft: rgba(45, 122, 191, 0.12);
-  background: #e8eef5;
-  color: #0f2030;
-}
-
-.theme-dark.app-shell {
-  --bg: #202020;
-  --canvas: #262626;
-  --panel: #2b2b2b;
-  --panel-raised: #303030;
-  --panel-hover: #343434;
-  --border: #3c3c3c;
-  --border-strong: #4c4c4c;
-  --text: #ececec;
-  --text-soft: #c7c7c7;
-  --text-muted: #a1a1a1;
-  --accent: #9a9a9a;
-  --accent-soft: rgba(210, 210, 210, 0.08);
-  background: #202020;
-  color: #ececec;
-}
-
-.theme-neon.app-shell {
-  --bg: #0d0d0d;
-  --canvas: #111111;
-  --panel: #141414;
-  --panel-raised: #1a1a1a;
-  --panel-hover: #222222;
-  --border: #2a2a2a;
-  --border-strong: #3a3a3a;
-  --text: #e0ffe8;
-  --text-soft: #9dfab5;
-  --text-muted: #6bc48a;
-  --accent: #00ff88;
-  --accent-soft: rgba(0, 255, 136, 0.10);
-  background: #0d0d0d;
-  color: #e0ffe8;
-}
-
-.theme-matrix.app-shell {
-  --bg: #000000;
-  --canvas: #030a03;
-  --panel: #050f05;
-  --panel-raised: #071407;
-  --panel-hover: #0a1e0a;
-  --border: #0f3311;
-  --border-strong: #175219;
-  --text: #00ff41;
-  --text-soft: #00c832;
-  --text-muted: #008a22;
-  --accent: #00ff41;
-  --accent-soft: rgba(0, 255, 65, 0.10);
-  background: #000000;
-  color: #00ff41;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-}
-
-.theme-midnight.app-shell {
-  --bg: #0a0d1a;
-  --canvas: #0d1122;
-  --panel: #101428;
-  --panel-raised: #14182e;
-  --panel-hover: #1a1f38;
-  --border: #252a45;
-  --border-strong: #353d60;
-  --text: #dde3ff;
-  --text-soft: #9aa5d4;
-  --text-muted: #6572a8;
-  --accent: #7b8cde;
-  --accent-soft: rgba(123, 140, 222, 0.12);
-  background: #0a0d1a;
-  color: #dde3ff;
 }
 
 /* ─── Settings popover ─────────────────────── */
@@ -1484,57 +1316,7 @@ button {
   text-transform: uppercase;
 }
 
-.theme-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 6px;
-}
-
-.theme-option {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 5px;
-  padding: 6px 4px;
-  border-radius: 8px;
-  border: 1px solid transparent;
-  transition: background-color 120ms ease, border-color 120ms ease;
-}
-
-.theme-option:hover {
-  background: var(--panel-hover);
-}
-
-.theme-option.active {
-  border-color: var(--accent);
-  background: var(--accent-soft);
-}
-
-.theme-option-swatch {
-  display: block;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  border: 3px solid transparent;
-}
-
-.theme-option-label {
-  font-size: 0.68rem;
-  color: var(--text-muted);
-  line-height: 1;
-}
-
-.theme-option.active .theme-option-label {
-  color: var(--text-soft);
-}
-
-/* ─── Settings: divider + editor row ────────── */
-
-.settings-divider {
-  height: 1px;
-  background: var(--border);
-  margin: 10px 0;
-}
+/* ─── Settings: editor row ─────────────────── */
 
 .settings-row {
   display: flex;
@@ -1949,186 +1731,33 @@ button {
 }
 
 /* ─── Liquid glass ──────────────────────────────────────── */
-/* Each theme gets a gradient bg so panels have something to blur against.  */
-/* Panels use backdrop-filter: blur() + semi-transparent backgrounds.        */
+/* Panels use backdrop-filter: blur() + semi-transparent backgrounds against
+   the app-shell gradient so they pick up the colour beneath them. */
 
-.theme-bear.app-shell {
-  background: radial-gradient(ellipse at 20% 0%, #1a1f3c 0%, #1c1c1e 55%);
-}
-.theme-default.app-shell {
-  background: radial-gradient(ellipse at 75% 0%, #dde2f5 0%, #efefef 55%);
-}
-.theme-warm.app-shell {
-  background: radial-gradient(ellipse at 85% 10%, #f0dfc0 0%, #f0ece5 55%);
-}
-.theme-sepia.app-shell {
-  background: radial-gradient(ellipse at 80% 0%, #e8d5b8 0%, #f4efe8 55%);
-}
-.theme-ocean.app-shell {
-  background: linear-gradient(140deg, #cfe0f0 0%, #e8eef5 50%, #d4e8fa 100%);
-}
-.theme-dark.app-shell {
-  background: radial-gradient(ellipse at 70% 0%, #252530 0%, #202020 60%);
-}
-.theme-neon.app-shell {
-  background: radial-gradient(ellipse at 50% 0%, #091409 0%, #0d0d0d 55%);
-}
-.theme-matrix.app-shell {
-  background: radial-gradient(ellipse at 50% 0%, #020802 0%, #000000 55%);
-}
-.theme-midnight.app-shell {
-  background: radial-gradient(ellipse at 30% 0%, #0c1035 0%, #0a0d1a 55%);
-}
-
-/* Bear — richest glass (dark) */
-.theme-bear .sidebar,
-.theme-bear .list-panel,
-.theme-bear .inspector-panel {
+.sidebar,
+.list-panel,
+.inspector-panel {
   background: rgba(28, 28, 30, 0.76);
   backdrop-filter: blur(20px) saturate(160%);
   -webkit-backdrop-filter: blur(20px) saturate(160%);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
-.theme-bear .topbar {
+.topbar {
   background: rgba(28, 28, 30, 0.82);
   backdrop-filter: blur(20px) saturate(160%);
   -webkit-backdrop-filter: blur(20px) saturate(160%);
 }
-.theme-bear .tab-bar {
+.tab-bar {
   background: rgba(30, 30, 32, 0.82);
   backdrop-filter: blur(20px) saturate(160%);
   -webkit-backdrop-filter: blur(20px) saturate(160%);
 }
-.theme-bear .settings-popover {
+.settings-popover {
   background: rgba(36, 36, 38, 0.92);
   backdrop-filter: blur(28px) saturate(180%);
   -webkit-backdrop-filter: blur(28px) saturate(180%);
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
-.theme-bear .inspector-head {
+.inspector-head {
   background: rgba(28, 28, 30, 0.92);
-}
-
-/* Midnight */
-.theme-midnight .sidebar,
-.theme-midnight .list-panel,
-.theme-midnight .inspector-panel {
-  background: rgba(16, 20, 40, 0.78);
-  backdrop-filter: blur(18px) saturate(150%);
-  -webkit-backdrop-filter: blur(18px) saturate(150%);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
-}
-.theme-midnight .tab-bar {
-  backdrop-filter: blur(18px) saturate(150%);
-  -webkit-backdrop-filter: blur(18px) saturate(150%);
-}
-.theme-midnight .settings-popover {
-  backdrop-filter: blur(24px) saturate(160%);
-  -webkit-backdrop-filter: blur(24px) saturate(160%);
-  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.08);
-}
-
-/* Dark */
-.theme-dark .sidebar,
-.theme-dark .list-panel,
-.theme-dark .inspector-panel {
-  background: rgba(43, 43, 43, 0.76);
-  backdrop-filter: blur(16px) saturate(140%);
-  -webkit-backdrop-filter: blur(16px) saturate(140%);
-}
-.theme-dark .settings-popover {
-  backdrop-filter: blur(24px) saturate(160%);
-  -webkit-backdrop-filter: blur(24px) saturate(160%);
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
-}
-
-/* Neon */
-.theme-neon .sidebar,
-.theme-neon .list-panel,
-.theme-neon .inspector-panel {
-  background: rgba(20, 20, 20, 0.80);
-  backdrop-filter: blur(16px) saturate(140%);
-  -webkit-backdrop-filter: blur(16px) saturate(140%);
-  box-shadow: inset 0 1px 0 rgba(0, 255, 136, 0.07);
-}
-.theme-neon .settings-popover {
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(0, 255, 136, 0.1);
-}
-
-/* Matrix */
-.theme-matrix .sidebar,
-.theme-matrix .list-panel,
-.theme-matrix .inspector-panel {
-  background: rgba(5, 15, 5, 0.82);
-  backdrop-filter: blur(16px) saturate(140%);
-  -webkit-backdrop-filter: blur(16px) saturate(140%);
-  box-shadow: inset 0 1px 0 rgba(0, 255, 65, 0.07);
-}
-.theme-matrix .settings-popover {
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(0, 255, 65, 0.1);
-}
-
-/* Default (light) */
-.theme-default .sidebar,
-.theme-default .list-panel,
-.theme-default .inspector-panel {
-  background: rgba(245, 245, 245, 0.78);
-  backdrop-filter: blur(16px) saturate(140%);
-  -webkit-backdrop-filter: blur(16px) saturate(140%);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.82);
-}
-.theme-default .settings-popover {
-  background: rgba(255, 255, 255, 0.88);
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.9);
-}
-
-/* Warm */
-.theme-warm .sidebar,
-.theme-warm .list-panel,
-.theme-warm .inspector-panel {
-  background: rgba(237, 233, 226, 0.78);
-  backdrop-filter: blur(16px) saturate(140%);
-  -webkit-backdrop-filter: blur(16px) saturate(140%);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
-}
-.theme-warm .settings-popover {
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.8);
-}
-
-/* Sepia */
-.theme-sepia .sidebar,
-.theme-sepia .list-panel,
-.theme-sepia .inspector-panel {
-  background: rgba(237, 232, 224, 0.78);
-  backdrop-filter: blur(16px) saturate(140%);
-  -webkit-backdrop-filter: blur(16px) saturate(140%);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.70);
-}
-.theme-sepia .settings-popover {
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.75);
-}
-
-/* Ocean */
-.theme-ocean .sidebar,
-.theme-ocean .list-panel,
-.theme-ocean .inspector-panel {
-  background: rgba(220, 229, 239, 0.78);
-  backdrop-filter: blur(16px) saturate(150%);
-  -webkit-backdrop-filter: blur(16px) saturate(150%);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
-}
-.theme-ocean .settings-popover {
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.78);
 }

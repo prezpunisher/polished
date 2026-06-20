@@ -1,535 +1,41 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import "./style.css";
-
-const STORAGE_KEY = "polished-notes-app";
-const UI_KEY = "polished-ui";
-
-const THEMES = [
-  { id: "default",  label: "Default",  group: "light", bg: "#efefef", accent: "#7d7d7d" },
-  { id: "warm",     label: "Warm",     group: "light", bg: "#f0ece5", accent: "#c87a2e" },
-  { id: "sepia",    label: "Sepia",    group: "light", bg: "#f4efe8", accent: "#8b6344" },
-  { id: "ocean",    label: "Ocean",    group: "light", bg: "#e8eef5", accent: "#2d7abf" },
-  { id: "bear",     label: "Bear",     group: "dark",  bg: "#1c1c1e", accent: "#4762e8" },
-  { id: "dark",     label: "Dark",     group: "dark",  bg: "#202020", accent: "#9a9a9a" },
-  { id: "neon",     label: "Neon",     group: "dark",  bg: "#0d0d0d", accent: "#00ff88" },
-  { id: "matrix",   label: "Matrix",   group: "dark",  bg: "#000000", accent: "#00ff41" },
-  { id: "midnight", label: "Midnight", group: "dark",  bg: "#0a0d1a", accent: "#7b8cde" },
-];
-const VALID_THEMES = THEMES.map((t) => t.id);
-
-function loadUiPrefs() {
-  try {
-    const stored = window.localStorage?.getItem(UI_KEY);
-    if (stored) {
-      const p = JSON.parse(stored);
-      return {
-        collectionCollapsed: Boolean(p.collectionCollapsed),
-        inspectorCollapsed: Boolean(p.inspectorCollapsed),
-        showLineNumbers: Boolean(p.showLineNumbers)
-      };
-    }
-  } catch {}
-  return { collectionCollapsed: false, inspectorCollapsed: false, showLineNumbers: false };
-}
-const MAX_NOTE_VERSIONS = 20;
-
-const folderSeed = [
-  { id: "folder-work", name: "Work", color: "sky" },
-  { id: "folder-personal", name: "Personal", color: "rose" },
-  { id: "folder-ideas", name: "Ideas", color: "amber" },
-  { id: "folder-reference", name: "Reference", color: "violet" }
-];
-
-const colorOptions = [
-  { value: "amber", label: "Amber", swatch: "#f1b879" },
-  { value: "rose", label: "Rose", swatch: "#f28b9e" },
-  { value: "jade", label: "Jade", swatch: "#69d3b0" },
-  { value: "sky", label: "Sky", swatch: "#7fb7ff" },
-  { value: "violet", label: "Violet", swatch: "#b59bff" }
-];
-
-const seedNotes = [
-  {
-    id: "note-1",
-    title: "Design the notes surface",
-    content:
-      "# Layout direction\n\nKeep the interface editorial and calm.\n\n- Left navigation for organization\n- Center list for fast scanning\n- Right editor for focused writing",
-    tags: ["design", "ui", "product"],
-    collaborators: ["@maya", "@leo"],
-    shareDirection: "outbound",
-    folderId: "folder-ideas",
-    isPinned: true,
-    isFavorite: true,
-    color: "amber",
-    createdAt: "2026-06-11T08:30:00.000Z",
-    updatedAt: "2026-06-13T08:40:00.000Z",
-    versions: [
-      {
-        id: "note-1-version-1",
-        savedAt: "2026-06-13T08:40:00.000Z",
-        title: "Design the notes surface",
-        content:
-          "# Layout direction\n\nKeep the interface editorial and calm.\n\n- Left navigation for organization\n- Center list for fast scanning\n- Right editor for focused writing",
-        tags: ["design", "ui", "product"],
-        collaborators: ["@maya", "@leo"],
-        folderId: "folder-ideas",
-        color: "amber"
-      }
-    ]
-  },
-  {
-    id: "note-2",
-    title: "Weekly priorities",
-    content:
-      "Ship the layout polish, tighten the onboarding copy, and review the first usage data after release.",
-    tags: ["work", "planning"],
-    collaborators: ["@finance_ops"],
-    shareDirection: "inbound",
-    folderId: "folder-work",
-    isFavorite: false,
-    color: "sky",
-    createdAt: "2026-06-10T12:15:00.000Z",
-    updatedAt: "2026-06-12T19:15:00.000Z",
-    versions: [
-      {
-        id: "note-2-version-1",
-        savedAt: "2026-06-12T19:15:00.000Z",
-        title: "Weekly priorities",
-        content:
-          "Ship the layout polish, tighten the onboarding copy, and review the first usage data after release.",
-        tags: ["work", "planning"],
-        collaborators: ["@finance_ops"],
-        folderId: "folder-work",
-        color: "sky"
-      }
-    ]
-  },
-  {
-    id: "note-3",
-    title: "Reading list",
-    content:
-      "Collect articles on typography, interaction states, and strong empty states.\n\n- Keep the best takeaways\n- Turn them into small product decisions",
-    tags: ["reading", "ideas"],
-    folderId: "folder-reference",
-    color: "violet",
-    createdAt: "2026-06-09T10:20:00.000Z",
-    updatedAt: "2026-06-11T16:20:00.000Z",
-    versions: [
-      {
-        id: "note-3-version-1",
-        savedAt: "2026-06-11T16:20:00.000Z",
-        title: "Reading list",
-        content:
-          "Collect articles on typography, interaction states, and strong empty states.\n\n- Keep the best takeaways\n- Turn them into small product decisions",
-        tags: ["reading", "ideas"],
-        collaborators: [],
-        folderId: "folder-reference",
-        color: "violet"
-      }
-    ]
-  }
-];
-
-function nowIso() {
-  return new Date().toISOString();
-}
-
-function createId() {
-  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-    return crypto.randomUUID();
-  }
-
-  return `note-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-}
-
-function normalizeFolder(folder, fallbackIndex = 0) {
-  return {
-    id: folder.id || `folder-${fallbackIndex}`,
-    name: folder.name || "Folder",
-    color: folder.color || "amber"
-  };
-}
-
-function normalizeHandle(value) {
-  const cleanedValue = value.trim().replace(/^@+/, "").replace(/\s+/g, "_").toLowerCase();
-
-  return cleanedValue ? `@${cleanedValue}` : "";
-}
-
-function normalizeTagValue(value) {
-  return value.trim().replace(/^#+/, "").replace(/\s+/g, "-").toLowerCase();
-}
-
-function normalizeChecklistItem(item) {
-  return {
-    id: item.id || createId(),
-    text: typeof item.text === "string" ? item.text : "",
-    done: Boolean(item.done),
-    createdAt: item.createdAt || nowIso()
-  };
-}
-
-function normalizeChecklist(cl) {
-  return {
-    id: cl.id || createId(),
-    title: typeof cl.title === "string" ? cl.title : "",
-    items: Array.isArray(cl.items) ? cl.items.map(normalizeChecklistItem) : [],
-    isPinned: Boolean(cl.isPinned),
-    isFavorite: Boolean(cl.isFavorite),
-    isTrashed: Boolean(cl.isTrashed),
-    isArchived: Boolean(cl.isArchived),
-    createdAt: cl.createdAt || nowIso(),
-    updatedAt: cl.updatedAt || nowIso()
-  };
-}
-
-const checklistSeed = [
-  {
-    id: "cl-daily",
-    title: "Daily tasks",
-    items: [
-      { id: "cli-1", text: "Review pull requests", done: false, createdAt: "2026-06-14T09:00:00Z" },
-      { id: "cli-2", text: "Team standup notes", done: false, createdAt: "2026-06-14T09:00:00Z" },
-      { id: "cli-3", text: "Update project board", done: true, createdAt: "2026-06-14T08:00:00Z" },
-    ],
-    createdAt: "2026-06-14T08:00:00Z",
-    updatedAt: "2026-06-14T09:00:00Z"
-  },
-  {
-    id: "cl-launch",
-    title: "Launch prep",
-    items: [
-      { id: "cli-4", text: "Write release notes", done: false, createdAt: "2026-06-14T08:00:00Z" },
-      { id: "cli-5", text: "QA sign-off", done: false, createdAt: "2026-06-14T08:00:00Z" },
-    ],
-    createdAt: "2026-06-14T08:00:00Z",
-    updatedAt: "2026-06-14T08:00:00Z"
-  }
-];
-
-function normalizeNote(note, folders = folderSeed) {
-  const fallbackFolderId = folders[0]?.id || "folder-default";
-  const legacyPinned = note.pinned ?? note.isPinned;
-  const hasExplicitAutoFlag = typeof note.isTitleAuto === "boolean";
-  const normalizedTitle = note.title || "Untitled Note";
-
-  return {
-    id: note.id || createId(),
-    title: normalizedTitle,
-    content: note.content || "",
-    tags: Array.isArray(note.tags) ? note.tags.map((tag) => String(tag).trim()).filter(Boolean) : [],
-    collaborators: Array.isArray(note.collaborators)
-      ? note.collaborators.map((handle) => normalizeHandle(String(handle))).filter(Boolean)
-      : [],
-    shareDirection: note.shareDirection === "inbound" ? "inbound" : note.shareDirection === "outbound" ? "outbound" : null,
-    folderId: note.folderId || fallbackFolderId,
-    isPinned: Boolean(legacyPinned),
-    isFavorite: Boolean(note.isFavorite),
-    isArchived: Boolean(note.isArchived),
-    isDeleted: Boolean(note.isDeleted),
-    isTitleAuto: hasExplicitAutoFlag ? note.isTitleAuto : normalizedTitle === "Untitled Note",
-    color: note.color || "amber",
-    versions: Array.isArray(note.versions)
-      ? note.versions.map((version, index) => ({
-          id: version.id || `${note.id || "note"}-version-${index}`,
-          savedAt: version.savedAt || note.updatedAt || nowIso(),
-          title: version.title || normalizedTitle,
-          content: version.content || "",
-          tags: Array.isArray(version.tags) ? version.tags : [],
-          collaborators: Array.isArray(version.collaborators)
-            ? version.collaborators.map((handle) => normalizeHandle(String(handle))).filter(Boolean)
-            : [],
-          folderId: version.folderId || fallbackFolderId,
-          color: version.color || note.color || "amber"
-        }))
-      : [],
-    createdAt: note.createdAt || nowIso(),
-    updatedAt: note.updatedAt || nowIso()
-  };
-}
-
-function normalizeView(view) {
-  if (!view || typeof view !== "object") {
-    return { kind: "all" };
-  }
-
-  if (view.kind === "folder" && typeof view.id === "string") {
-    return { kind: "folder", id: view.id };
-  }
-
-  if (
-    ["all", "pinned", "favorites", "shared", "inbound", "outbound", "archive", "trash", "tasks"].includes(
-      view.kind
-    )
-  ) {
-    return { kind: view.kind };
-  }
-
-  return { kind: "all" };
-}
-
-function createDefaultState() {
-  const notes = seedNotes.map((note) => normalizeNote(note));
-  const checklists = checklistSeed.map(normalizeChecklist);
-
-  return {
-    theme: "bear",
-    activeView: { kind: "all" },
-    activeId: notes[0]?.id ?? null,
-    activeChecklistId: checklists[0]?.id ?? null,
-    folders: folderSeed.map(normalizeFolder),
-    notes,
-    checklists
-  };
-}
-
-function loadAppState() {
-  if (typeof window === "undefined") {
-    return createDefaultState();
-  }
-
-  try {
-    const stored = window.localStorage.getItem(STORAGE_KEY);
-
-    if (!stored) {
-      return createDefaultState();
-    }
-
-    const parsed = JSON.parse(stored);
-
-    if (Array.isArray(parsed)) {
-      const notes = parsed.map((note) => normalizeNote(note));
-
-      return {
-        ...createDefaultState(),
-        notes,
-        activeId: notes[0]?.id ?? null
-      };
-    }
-
-    if (parsed && typeof parsed === "object") {
-      const folders = Array.isArray(parsed.folders)
-        ? parsed.folders.map((folder, index) => normalizeFolder(folder, index))
-        : folderSeed.map(normalizeFolder);
-      const notes = Array.isArray(parsed.notes)
-        ? parsed.notes.map((note) => normalizeNote(note, folders))
-        : createDefaultState().notes;
-
-      const storedTheme = parsed.theme;
-      const theme = VALID_THEMES.includes(storedTheme)
-        ? storedTheme
-        : storedTheme === "dark" ? "dark" : "default";
-
-      const checklists = Array.isArray(parsed.checklists)
-        ? parsed.checklists.map(normalizeChecklist)
-        : createDefaultState().checklists;
-
-      return {
-        theme,
-        activeView: normalizeView(parsed.activeView),
-        activeId: typeof parsed.activeId === "string" ? parsed.activeId : notes[0]?.id ?? null,
-        activeChecklistId: typeof parsed.activeChecklistId === "string" ? parsed.activeChecklistId : checklists[0]?.id ?? null,
-        folders,
-        notes,
-        checklists
-      };
-    }
-  } catch {
-    return createDefaultState();
-  }
-
-  return createDefaultState();
-}
-
-function sortNotes(notes, viewKind = "all") {
-  return [...notes].sort((a, b) => {
-    if (viewKind !== "trash") {
-      if (a.isPinned !== b.isPinned) {
-        return a.isPinned ? -1 : 1;
-      }
-
-      if (a.isFavorite !== b.isFavorite) {
-        return a.isFavorite ? -1 : 1;
-      }
-    }
-
-    return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
-  });
-}
-
-function formatDateTime(value) {
-  return new Date(value).toLocaleString("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit"
-  });
-}
-
-function previewText(note) {
-  const text = note.content.trim().replace(/\s+/g, " ");
-
-  if (!text) {
-    return "Start writing something.";
-  }
-
-  return text.length > 120 ? `${text.slice(0, 120)}...` : text;
-}
-
-function stripInlineMarkdown(text) {
-  return text
-    .replace(/`([^`]+)`/g, "$1")
-    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, "$1")
-    .replace(/\*\*([^*]+)\*\*/g, "$1")
-    .replace(/\*([^*]+)\*/g, "$1")
-    .replace(/^#{1,6}\s+/g, "")
-    .replace(/^[-*]\s+/g, "")
-    .trim();
-}
-
-function deriveTitleFromContent(content) {
-  const trimmedContent = content.trim();
-
-  if (!trimmedContent) {
-    return "Untitled Note";
-  }
-
-  const codeFenceMatch = trimmedContent.match(/^```([a-z0-9_-]+)?/im);
-  if (codeFenceMatch && trimmedContent.replace(/```/g, "").trim().split("\n").length <= 6) {
-    const language = codeFenceMatch[1]?.toUpperCase() || "Code";
-    return `${language} snippet`;
-  }
-
-  const lines = trimmedContent
-    .split("\n")
-    .map((line) => stripInlineMarkdown(line))
-    .filter(Boolean);
-
-  const firstMeaningfulLine = lines.find((line) => !/^```/.test(line));
-  if (!firstMeaningfulLine) {
-    return "Untitled Note";
-  }
-
-  return firstMeaningfulLine.length > 68
-    ? `${firstMeaningfulLine.slice(0, 68).trimEnd()}...`
-    : firstMeaningfulLine;
-}
-
-function getNextUntitledTitle(notes) {
-  const taken = new Set(notes.filter((n) => !n.isDeleted).map((n) => n.title));
-  if (!taken.has("Untitled Note")) return "Untitled Note";
-  let i = 2;
-  while (taken.has(`Untitled Note ${i}`)) i++;
-  return `Untitled Note ${i}`;
-}
-
-function matchesQuery(note, query) {
-  if (!query) {
-    return true;
-  }
-
-  const target = [note.title, note.content, note.tags.join(" ")].join(" ").toLowerCase();
-  return target.includes(query);
-}
-
-function filterNotes(notes, view) {
-  return notes.filter((note) => {
-    if (view.kind === "trash") {
-      return note.isDeleted;
-    }
-
-    if (note.isDeleted) {
-      return false;
-    }
-
-    if (view.kind === "archive") {
-      return note.isArchived;
-    }
-
-    if (note.isArchived) {
-      return false;
-    }
-
-    if (view.kind === "pinned") {
-      return note.isPinned;
-    }
-
-    if (view.kind === "favorites") {
-      return note.isFavorite;
-    }
-
-    if (view.kind === "shared") {
-      return note.collaborators.length > 0;
-    }
-
-    if (view.kind === "inbound") {
-      return note.collaborators.length > 0 && note.shareDirection === "inbound";
-    }
-
-    if (view.kind === "outbound") {
-      return note.collaborators.length > 0 && note.shareDirection !== "inbound";
-    }
-
-    if (view.kind === "folder") {
-      return note.folderId === view.id;
-    }
-
-    return true;
-  });
-}
-
-function getViewLabel(view, folders) {
-  if (view.kind === "folder") {
-    return folders.find((folder) => folder.id === view.id)?.name || "Folder";
-  }
-
-  const labels = {
-    all: "All",
-    notes: "Notes",
-    pinned: "Pinned",
-    favorites: "Favorites",
-    shared: "Shared notes",
-    inbound: "Shared to you",
-    outbound: "Shared by you",
-    archive: "Archive",
-    trash: "Trash"
-  };
-
-  return labels[view.kind] || "All";
-}
-
-function getSearchScopeLabel(note) {
-  if (note.isDeleted) {
-    return "Trash";
-  }
-
-  if (note.isArchived) {
-    return "Archive";
-  }
-
-  if (note.isPinned) {
-    return "Pinned";
-  }
-
-  if (note.isFavorite) {
-    return "Favorites";
-  }
-
-  return "Active";
-}
-
-function getShareLabel(note) {
-  if (note.shareDirection === "inbound") {
-    return "Shared to you";
-  }
-
-  if (note.shareDirection === "outbound") {
-    return "Shared by you";
-  }
-
-  return note.collaborators.length > 0 ? "Shared" : "Private";
-}
+import {
+  colorOptions,
+  nowIso,
+  createId,
+  MAX_VERSIONS
+} from "./lib/constants.js";
+import {
+  normalizeHandle,
+  normalizeTagValue,
+  normalizeFolder,
+  normalizeNote,
+  normalizeChecklistItem,
+  normalizeChecklist
+} from "./lib/normalizers.js";
+import {
+  matchesQuery,
+  filterNotes,
+  sortNotes,
+  getViewLabel,
+  formatDateTime,
+  previewText
+} from "./lib/filters.js";
+import {
+  deriveTitleFromContent,
+  shouldStoreVersion,
+  getNextUntitledTitle
+} from "./lib/markdown.js";
+import {
+  loadUiPrefs,
+  saveUiPrefs,
+  loadAppState,
+  saveAppState
+} from "./lib/storage.js";
+import NoteCard from "./components/NoteCard.jsx";
+import TaskCard from "./components/TaskCard.jsx";
 
 function createVersionSnapshot(note, savedAt) {
   return {
@@ -542,188 +48,6 @@ function createVersionSnapshot(note, savedAt) {
     folderId: note.folderId,
     color: note.color
   };
-}
-
-function shouldStoreVersion(previousNote, nextNote) {
-  if (!previousNote) {
-    return true;
-  }
-
-  const contentChanged = previousNote.content !== nextNote.content;
-  const titleChanged = previousNote.title !== nextNote.title;
-  const tagsChanged = JSON.stringify(previousNote.tags) !== JSON.stringify(nextNote.tags);
-  const collaboratorsChanged =
-    JSON.stringify(previousNote.collaborators) !== JSON.stringify(nextNote.collaborators);
-  const folderChanged = previousNote.folderId !== nextNote.folderId;
-  const colorChanged = previousNote.color !== nextNote.color;
-
-  if (!contentChanged && !titleChanged && !tagsChanged && !collaboratorsChanged && !folderChanged && !colorChanged) {
-    return false;
-  }
-
-  const previousSnapshot = previousNote.versions?.[0];
-  if (!previousSnapshot) {
-    return true;
-  }
-
-  const elapsed = new Date(nextNote.updatedAt).getTime() - new Date(previousSnapshot.savedAt).getTime();
-  const contentDelta = Math.abs((nextNote.content || "").length - (previousNote.content || "").length);
-
-  return elapsed >= 60_000 || titleChanged || collaboratorsChanged || tagsChanged || folderChanged || colorChanged || contentDelta >= 120;
-}
-
-function parseInlineMarkdown(text, keyPrefix) {
-  const parts = [];
-  const pattern = /(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`|\[[^\]]+\]\([^)]+\))/g;
-  let lastIndex = 0;
-  let match;
-  let partIndex = 0;
-
-  while ((match = pattern.exec(text))) {
-    if (match.index > lastIndex) {
-      parts.push(text.slice(lastIndex, match.index));
-    }
-
-    const token = match[0];
-
-    if (token.startsWith("**")) {
-      parts.push(
-        <strong key={`${keyPrefix}-strong-${partIndex++}`}>{token.slice(2, -2)}</strong>
-      );
-    } else if (token.startsWith("*")) {
-      parts.push(<em key={`${keyPrefix}-em-${partIndex++}`}>{token.slice(1, -1)}</em>);
-    } else if (token.startsWith("`")) {
-      parts.push(<code key={`${keyPrefix}-code-${partIndex++}`}>{token.slice(1, -1)}</code>);
-    } else if (token.startsWith("[")) {
-      const linkMatch = token.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
-      if (linkMatch) {
-        parts.push(
-          <a key={`${keyPrefix}-link-${partIndex++}`} href={linkMatch[2]} target="_blank" rel="noreferrer">
-            {linkMatch[1]}
-          </a>
-        );
-      }
-    }
-
-    lastIndex = match.index + token.length;
-  }
-
-  if (lastIndex < text.length) {
-    parts.push(text.slice(lastIndex));
-  }
-
-  return parts.length > 0 ? parts : text;
-}
-
-function renderMarkdownPreview(content) {
-  const lines = content.split("\n");
-  const nodes = [];
-  let index = 0;
-
-  while (index < lines.length) {
-    const line = lines[index];
-
-    if (!line.trim()) {
-      nodes.push(<div key={`gap-${index}`} className="preview-gap" />);
-      index += 1;
-      continue;
-    }
-
-    if (/^```/.test(line.trim())) {
-      const language = line.trim().replace(/^```/, "").trim();
-      const codeLines = [];
-      index += 1;
-
-      while (index < lines.length && !/^```/.test(lines[index].trim())) {
-        codeLines.push(lines[index]);
-        index += 1;
-      }
-
-      if (index < lines.length && /^```/.test(lines[index].trim())) {
-        index += 1;
-      }
-
-      nodes.push(
-        <div key={`code-${index}`} className="preview-code-block">
-          {language && <div className="preview-code-label">{language}</div>}
-          <pre>
-            <code>{codeLines.join("\n")}</code>
-          </pre>
-        </div>
-      );
-      continue;
-    }
-
-    if (/^#{1,3}\s+/.test(line)) {
-      const level = line.match(/^#{1,3}/)[0].length;
-      const text = line.replace(/^#{1,3}\s+/, "");
-      const HeadingTag = level === 1 ? "h3" : level === 2 ? "h4" : "h5";
-      nodes.push(<HeadingTag key={`heading-${index}`}>{parseInlineMarkdown(text, `heading-${index}`)}</HeadingTag>);
-      index += 1;
-      continue;
-    }
-
-    if (/^[-*]\s+\[( |x|X)\]\s+/.test(line)) {
-      const items = [];
-      while (index < lines.length && /^[-*]\s+\[( |x|X)\]\s+/.test(lines[index])) {
-        const match = lines[index].match(/^[-*]\s+\[( |x|X)\]\s+(.*)$/);
-        items.push({
-          checked: match[1].toLowerCase() === "x",
-          text: match[2]
-        });
-        index += 1;
-      }
-
-      nodes.push(
-        <ul key={`checklist-${index}`} className="preview-checklist">
-          {items.map((item, itemIndex) => (
-            <li key={`check-${index}-${itemIndex}`}>
-              <label>
-                <input type="checkbox" checked={item.checked} readOnly />
-                <span>{parseInlineMarkdown(item.text, `check-${index}-${itemIndex}`)}</span>
-              </label>
-            </li>
-          ))}
-        </ul>
-      );
-      continue;
-    }
-
-    if (/^[-*]\s+/.test(line)) {
-      const items = [];
-      while (index < lines.length && /^[-*]\s+/.test(lines[index])) {
-        items.push(lines[index].replace(/^[-*]\s+/, ""));
-        index += 1;
-      }
-
-      nodes.push(
-        <ul key={`list-${index}`} className="preview-list">
-          {items.map((item, itemIndex) => (
-            <li key={`item-${index}-${itemIndex}`}>{parseInlineMarkdown(item, `item-${index}-${itemIndex}`)}</li>
-          ))}
-        </ul>
-      );
-      continue;
-    }
-
-    const paragraph = [];
-    while (index < lines.length && lines[index].trim() && !/^#{1,3}\s+/.test(lines[index]) && !/^[-*]\s+/.test(lines[index])) {
-      paragraph.push(lines[index]);
-      index += 1;
-    }
-
-    nodes.push(
-      <p key={`paragraph-${index}`} className="preview-paragraph">
-        {parseInlineMarkdown(paragraph.join(" "), `paragraph-${index}`)}
-      </p>
-    );
-  }
-
-  return nodes;
-}
-
-function noteMatchesFolder(note, activeView) {
-  return activeView.kind === "folder" ? note.folderId === activeView.id : true;
 }
 
 const isElectron = typeof navigator !== 'undefined' && /electron/i.test(navigator.userAgent);
@@ -757,7 +81,7 @@ export default function App() {
   const settingsBtnRef = useRef(null);
   const lineNumbersRef = useRef(null);
 
-  const { notes, folders, theme, activeView, activeId, checklists, activeChecklistId } = appState;
+  const { notes, folders, activeView, activeId, checklists, activeChecklistId } = appState;
   const activeChecklist = (checklists || []).find((cl) => cl.id === activeChecklistId) ?? null;
   const activeTabChecklist = openTabs.includes(activeId)
     ? (checklists || []).find((cl) => cl.id === activeId) ?? null
@@ -787,15 +111,15 @@ export default function App() {
   }, [openTabs, activeId]);
 
   useEffect(() => {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+    saveAppState(appState);
   }, [appState]);
 
   useEffect(() => {
-    window.localStorage.setItem(UI_KEY, JSON.stringify({
+    saveUiPrefs({
       collectionCollapsed: isCollectionCollapsed,
       inspectorCollapsed: isInspectorCollapsed,
       showLineNumbers
-    }));
+    });
   }, [isCollectionCollapsed, isInspectorCollapsed, showLineNumbers]);
 
   useEffect(() => {
@@ -882,8 +206,6 @@ export default function App() {
 
   const folderName = activeNote ? folderMap.get(activeNote.folderId)?.name || "Folder" : "Folder";
   const viewLabel = query.trim() ? "Search results" : getViewLabel(activeView, folders);
-  const lightThemes = THEMES.filter((t) => t.group === "light");
-  const darkThemes = THEMES.filter((t) => t.group === "dark");
 
   function commitNote(noteId, patch) {
     setAppState((current) => {
@@ -911,7 +233,7 @@ export default function App() {
             versions: [
               createVersionSnapshot(nextNote, savedAt),
               ...(note.versions || [])
-            ].slice(0, MAX_NOTE_VERSIONS)
+            ].slice(0, MAX_VERSIONS)
           };
         })
       };
@@ -1299,11 +621,6 @@ export default function App() {
     });
   }
 
-  function applyTheme(name) {
-    setAppState((current) => ({ ...current, theme: name }));
-    setShowSettings(false);
-  }
-
   function handleTitleChange(value) {
     if (!activeNote) {
       return;
@@ -1397,14 +714,14 @@ export default function App() {
           color: version.color || note.color,
           isTitleAuto: !version.title || version.title === deriveTitleFromContent(version.content || ""),
           updatedAt: savedAt,
-          versions: [currentSnapshot, ...(note.versions || [])].slice(0, MAX_NOTE_VERSIONS)
+          versions: [currentSnapshot, ...(note.versions || [])].slice(0, MAX_VERSIONS)
         };
       })
     }));
   }
 
   return (
-    <main className={`app-shell theme-${theme}${isElectron ? ' electron-app' : ''}`}>
+    <main className={`app-shell${isElectron ? ' electron-app' : ''}`}>
       <section className="notes-app" aria-label="Polished notes app">
         <div className={`workspace-grid${isCollectionCollapsed ? " collection-collapsed" : ""}${isInspectorCollapsed ? " inspector-collapsed" : ""}`}>
           <nav className="sidebar" aria-label="Navigation">
@@ -1661,41 +978,6 @@ export default function App() {
                   style={{ position: "fixed", bottom: settingsAnchor.bottom, left: settingsAnchor.left }}
                 >
                   <div>
-                    <p className="settings-group-label">Light</p>
-                    <div className="theme-grid">
-                      {lightThemes.map((t) => (
-                        <button
-                          key={t.id}
-                          type="button"
-                          className={`theme-option${theme === t.id ? " active" : ""}`}
-                          onClick={() => applyTheme(t.id)}
-                          aria-label={`${t.label} theme`}
-                        >
-                          <span className="theme-option-swatch" style={{ background: t.bg, borderColor: t.accent }} />
-                          <span className="theme-option-label">{t.label}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <p className="settings-group-label">Dark</p>
-                    <div className="theme-grid">
-                      {darkThemes.map((t) => (
-                        <button
-                          key={t.id}
-                          type="button"
-                          className={`theme-option${theme === t.id ? " active" : ""}`}
-                          onClick={() => applyTheme(t.id)}
-                          aria-label={`${t.label} theme`}
-                        >
-                          <span className="theme-option-swatch" style={{ background: t.bg, borderColor: t.accent }} />
-                          <span className="theme-option-label">{t.label}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="settings-divider" />
-                  <div>
                     <p className="settings-group-label">Editor</p>
                     <div className="settings-row">
                       <span className="settings-row-label">Line numbers</span>
@@ -1749,37 +1031,15 @@ export default function App() {
                           if (a.isFavorite !== b.isFavorite) return a.isFavorite ? -1 : 1;
                           return new Date(b.updatedAt) - new Date(a.updatedAt);
                         });
-                      return active.length > 0 ? active.map((cl) => {
-                        const total = cl.items.length;
-                        const done = cl.items.filter((i) => i.done).length;
-                        const remaining = total - done;
-                        return (
-                          <div key={cl.id} className={`note-card checklist-card${cl.id === activeId && activeTabChecklist ? " active" : ""}`}>
-                            <button
-                              type="button"
-                              className="checklist-card-select"
-                              onClick={() => openChecklistInTab(cl.id)}
-                            >
-                              <div className="note-card-head">
-                                <strong>
-                                  {cl.isPinned && <span aria-hidden="true">📌 </span>}
-                                  {cl.isFavorite && <span aria-hidden="true">★ </span>}
-                                  {cl.title || <em style={{ opacity: 0.45 }}>Untitled</em>}
-                                </strong>
-                              </div>
-                              <p>{total === 0 ? "No items" : remaining === 0 ? "All done" : `${remaining} remaining · ${done} done`}</p>
-                            </button>
-                            <button
-                              type="button"
-                              className="folder-delete"
-                              aria-label={`Move to trash ${cl.title}`}
-                              onClick={() => trashChecklist(cl.id)}
-                            >
-                              ×
-                            </button>
-                          </div>
-                        );
-                      }) : (
+                      return active.length > 0 ? active.map((cl) => (
+                        <TaskCard
+                          key={cl.id}
+                          checklist={cl}
+                          isActive={cl.id === activeId && !!activeTabChecklist}
+                          onOpen={() => openChecklistInTab(cl.id)}
+                          onTrash={() => trashChecklist(cl.id)}
+                        />
+                      )) : (
                         <div className="empty-state">
                           <h3>No tasks yet</h3>
                           <p>Create a task list to start tracking your work.</p>
@@ -1824,24 +1084,16 @@ export default function App() {
                         <span>Includes archive and trash</span>
                       </div>
                       <div className="note-list" role="list">
-                        {visibleNotes.length > 0 ? visibleNotes.map((note) => {
-                          const selected = note.id === activeNote?.id;
-                          return (
-                            <button
-                              type="button"
-                              role="listitem"
-                              key={note.id}
-                              className={`note-card ${selected ? "active" : ""}`}
-                              onClick={() => openNoteInTab(note.id)}
-                            >
-                              <div className="note-card-head">
-                                <strong>{note.title || "Untitled Note"}</strong>
-                                <span>{formatDateTime(note.updatedAt)}</span>
-                              </div>
-                              <p>{previewText(note)}</p>
-                            </button>
-                          );
-                        }) : (
+                        {visibleNotes.length > 0 ? visibleNotes.map((note) => (
+                          <NoteCard
+                            key={note.id}
+                            note={note}
+                            isActive={note.id === activeNote?.id}
+                            onClick={() => openNoteInTab(note.id)}
+                            formatDateTime={formatDateTime}
+                            previewText={previewText}
+                          />
+                        )) : (
                           <div className="empty-state">
                             <h3>No results</h3>
                             <p>No notes matched your search.</p>
@@ -1865,24 +1117,16 @@ export default function App() {
                         }
                         return (
                           <>
-                            {trashedNotes.map((note) => {
-                              const selected = note.id === activeNote?.id;
-                              return (
-                                <button
-                                  type="button"
-                                  role="listitem"
-                                  key={note.id}
-                                  className={`note-card ${selected ? "active" : ""}`}
-                                  onClick={() => openNoteInTab(note.id)}
-                                >
-                                  <div className="note-card-head">
-                                    <strong>{note.title || "Untitled Note"}</strong>
-                                    <span>{formatDateTime(note.updatedAt)}</span>
-                                  </div>
-                                  <p>{previewText(note)}</p>
-                                </button>
-                              );
-                            })}
+                            {trashedNotes.map((note) => (
+                              <NoteCard
+                                key={note.id}
+                                note={note}
+                                isActive={note.id === activeNote?.id}
+                                onClick={() => openNoteInTab(note.id)}
+                                formatDateTime={formatDateTime}
+                                previewText={previewText}
+                              />
+                            ))}
                             {trashedTasks.map((cl) => (
                               <div key={cl.id} className="note-card checklist-card unified-card">
                                 <div className="unified-card-body">
@@ -1915,24 +1159,16 @@ export default function App() {
                         }
                         return (
                           <>
-                            {archivedNotes.map((note) => {
-                              const selected = note.id === activeNote?.id;
-                              return (
-                                <button
-                                  type="button"
-                                  role="listitem"
-                                  key={note.id}
-                                  className={`note-card ${selected ? "active" : ""}`}
-                                  onClick={() => openNoteInTab(note.id)}
-                                >
-                                  <div className="note-card-head">
-                                    <strong>{note.title || "Untitled Note"}</strong>
-                                    <span>{formatDateTime(note.updatedAt)}</span>
-                                  </div>
-                                  <p>{previewText(note)}</p>
-                                </button>
-                              );
-                            })}
+                            {archivedNotes.map((note) => (
+                              <NoteCard
+                                key={note.id}
+                                note={note}
+                                isActive={note.id === activeNote?.id}
+                                onClick={() => openNoteInTab(note.id)}
+                                formatDateTime={formatDateTime}
+                                previewText={previewText}
+                              />
+                            ))}
                             {archivedTasks.map((cl) => (
                               <div key={cl.id} className="note-card checklist-card unified-card">
                                 <div className="unified-card-body">
@@ -1975,40 +1211,25 @@ export default function App() {
                           return allItems.map((item) => {
                             const isTask = "items" in item;
                             if (isTask) {
-                              const total = item.items.length;
-                              const done = item.items.filter((i) => i.done).length;
-                              const remaining = total - done;
                               return (
-                                <div key={item.id} className={`note-card checklist-card${item.id === activeId && activeTabChecklist ? " active" : ""}`}>
-                                  <button
-                                    type="button"
-                                    className="checklist-card-select"
-                                    onClick={() => openChecklistInTab(item.id)}
-                                  >
-                                    <div className="note-card-head">
-                                      <strong>{item.title || <em style={{ opacity: 0.45 }}>Untitled</em>}</strong>
-                                      <span className="card-type-tag">Task</span>
-                                    </div>
-                                    <p>{total === 0 ? "No items" : remaining === 0 ? "All done" : `${remaining} remaining · ${done} done`}</p>
-                                  </button>
-                                </div>
+                                <TaskCard
+                                  key={item.id}
+                                  checklist={item}
+                                  isActive={item.id === activeId && !!activeTabChecklist}
+                                  onOpen={() => openChecklistInTab(item.id)}
+                                  showTaskTag
+                                />
                               );
                             }
-                            const selected = item.id === activeNote?.id;
                             return (
-                              <button
-                                type="button"
-                                role="listitem"
+                              <NoteCard
                                 key={item.id}
-                                className={`note-card ${selected ? "active" : ""}`}
+                                note={item}
+                                isActive={item.id === activeNote?.id}
                                 onClick={() => openNoteInTab(item.id)}
-                              >
-                                <div className="note-card-head">
-                                  <strong>{item.title || "Untitled Note"}</strong>
-                                  <span>{formatDateTime(item.updatedAt)}</span>
-                                </div>
-                                <p>{previewText(item)}</p>
-                              </button>
+                                formatDateTime={formatDateTime}
+                                previewText={previewText}
+                              />
                             );
                           });
                         })()}
@@ -2027,24 +1248,16 @@ export default function App() {
                       </div>
                       <div className="note-list" role="list">
                         {visibleNotes.length > 0 ? (
-                          visibleNotes.map((note) => {
-                            const selected = note.id === activeNote?.id;
-                            return (
-                              <button
-                                type="button"
-                                role="listitem"
-                                key={note.id}
-                                className={`note-card ${selected ? "active" : ""}`}
-                                onClick={() => openNoteInTab(note.id)}
-                              >
-                                <div className="note-card-head">
-                                  <strong>{note.title || "Untitled Note"}</strong>
-                                  <span>{formatDateTime(note.updatedAt)}</span>
-                                </div>
-                                <p>{previewText(note)}</p>
-                              </button>
-                            );
-                          })
+                          visibleNotes.map((note) => (
+                            <NoteCard
+                              key={note.id}
+                              note={note}
+                              isActive={note.id === activeNote?.id}
+                              onClick={() => openNoteInTab(note.id)}
+                              formatDateTime={formatDateTime}
+                              previewText={previewText}
+                            />
+                          ))
                         ) : (
                           <div className="empty-state">
                             <h3>No notes here yet</h3>
