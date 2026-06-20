@@ -1,8 +1,22 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import "./style.css";
 
 const STORAGE_KEY = "polished-notes-app";
 const UI_KEY = "polished-ui";
+
+const THEMES = [
+  { id: "default",  label: "Default",  group: "light", bg: "#efefef", accent: "#7d7d7d" },
+  { id: "warm",     label: "Warm",     group: "light", bg: "#f0ece5", accent: "#c87a2e" },
+  { id: "sepia",    label: "Sepia",    group: "light", bg: "#f4efe8", accent: "#8b6344" },
+  { id: "ocean",    label: "Ocean",    group: "light", bg: "#e8eef5", accent: "#2d7abf" },
+  { id: "bear",     label: "Bear",     group: "dark",  bg: "#1c1c1e", accent: "#4762e8" },
+  { id: "dark",     label: "Dark",     group: "dark",  bg: "#202020", accent: "#9a9a9a" },
+  { id: "neon",     label: "Neon",     group: "dark",  bg: "#0d0d0d", accent: "#00ff88" },
+  { id: "matrix",   label: "Matrix",   group: "dark",  bg: "#000000", accent: "#00ff41" },
+  { id: "midnight", label: "Midnight", group: "dark",  bg: "#0a0d1a", accent: "#7b8cde" },
+];
+const VALID_THEMES = THEMES.map((t) => t.id);
 
 function loadUiPrefs() {
   try {
@@ -11,11 +25,12 @@ function loadUiPrefs() {
       const p = JSON.parse(stored);
       return {
         collectionCollapsed: Boolean(p.collectionCollapsed),
-        inspectorCollapsed: Boolean(p.inspectorCollapsed)
+        inspectorCollapsed: Boolean(p.inspectorCollapsed),
+        showLineNumbers: Boolean(p.showLineNumbers)
       };
     }
   } catch {}
-  return { collectionCollapsed: false, inspectorCollapsed: false };
+  return { collectionCollapsed: false, inspectorCollapsed: false, showLineNumbers: false };
 }
 const MAX_NOTE_VERSIONS = 20;
 
@@ -146,11 +161,58 @@ function normalizeTagValue(value) {
   return value.trim().replace(/^#+/, "").replace(/\s+/g, "-").toLowerCase();
 }
 
+function normalizeChecklistItem(item) {
+  return {
+    id: item.id || createId(),
+    text: typeof item.text === "string" ? item.text : "",
+    done: Boolean(item.done),
+    createdAt: item.createdAt || nowIso()
+  };
+}
+
+function normalizeChecklist(cl) {
+  return {
+    id: cl.id || createId(),
+    title: typeof cl.title === "string" ? cl.title : "",
+    items: Array.isArray(cl.items) ? cl.items.map(normalizeChecklistItem) : [],
+    isPinned: Boolean(cl.isPinned),
+    isFavorite: Boolean(cl.isFavorite),
+    isTrashed: Boolean(cl.isTrashed),
+    isArchived: Boolean(cl.isArchived),
+    createdAt: cl.createdAt || nowIso(),
+    updatedAt: cl.updatedAt || nowIso()
+  };
+}
+
+const checklistSeed = [
+  {
+    id: "cl-daily",
+    title: "Daily tasks",
+    items: [
+      { id: "cli-1", text: "Review pull requests", done: false, createdAt: "2026-06-14T09:00:00Z" },
+      { id: "cli-2", text: "Team standup notes", done: false, createdAt: "2026-06-14T09:00:00Z" },
+      { id: "cli-3", text: "Update project board", done: true, createdAt: "2026-06-14T08:00:00Z" },
+    ],
+    createdAt: "2026-06-14T08:00:00Z",
+    updatedAt: "2026-06-14T09:00:00Z"
+  },
+  {
+    id: "cl-launch",
+    title: "Launch prep",
+    items: [
+      { id: "cli-4", text: "Write release notes", done: false, createdAt: "2026-06-14T08:00:00Z" },
+      { id: "cli-5", text: "QA sign-off", done: false, createdAt: "2026-06-14T08:00:00Z" },
+    ],
+    createdAt: "2026-06-14T08:00:00Z",
+    updatedAt: "2026-06-14T08:00:00Z"
+  }
+];
+
 function normalizeNote(note, folders = folderSeed) {
   const fallbackFolderId = folders[0]?.id || "folder-default";
   const legacyPinned = note.pinned ?? note.isPinned;
   const hasExplicitAutoFlag = typeof note.isTitleAuto === "boolean";
-  const normalizedTitle = note.title || "Untitled note";
+  const normalizedTitle = note.title || "Untitled Note";
 
   return {
     id: note.id || createId(),
@@ -166,7 +228,7 @@ function normalizeNote(note, folders = folderSeed) {
     isFavorite: Boolean(note.isFavorite),
     isArchived: Boolean(note.isArchived),
     isDeleted: Boolean(note.isDeleted),
-    isTitleAuto: hasExplicitAutoFlag ? note.isTitleAuto : normalizedTitle === "Untitled note",
+    isTitleAuto: hasExplicitAutoFlag ? note.isTitleAuto : normalizedTitle === "Untitled Note",
     color: note.color || "amber",
     versions: Array.isArray(note.versions)
       ? note.versions.map((version, index) => ({
@@ -197,7 +259,7 @@ function normalizeView(view) {
   }
 
   if (
-    ["all", "pinned", "favorites", "shared", "inbound", "outbound", "archive", "trash"].includes(
+    ["all", "pinned", "favorites", "shared", "inbound", "outbound", "archive", "trash", "tasks"].includes(
       view.kind
     )
   ) {
@@ -209,13 +271,16 @@ function normalizeView(view) {
 
 function createDefaultState() {
   const notes = seedNotes.map((note) => normalizeNote(note));
+  const checklists = checklistSeed.map(normalizeChecklist);
 
   return {
-    theme: "light",
+    theme: "bear",
     activeView: { kind: "all" },
     activeId: notes[0]?.id ?? null,
+    activeChecklistId: checklists[0]?.id ?? null,
     folders: folderSeed.map(normalizeFolder),
-    notes
+    notes,
+    checklists
   };
 }
 
@@ -251,12 +316,23 @@ function loadAppState() {
         ? parsed.notes.map((note) => normalizeNote(note, folders))
         : createDefaultState().notes;
 
+      const storedTheme = parsed.theme;
+      const theme = VALID_THEMES.includes(storedTheme)
+        ? storedTheme
+        : storedTheme === "dark" ? "dark" : "default";
+
+      const checklists = Array.isArray(parsed.checklists)
+        ? parsed.checklists.map(normalizeChecklist)
+        : createDefaultState().checklists;
+
       return {
-        theme: parsed.theme === "dark" ? "dark" : "light",
+        theme,
         activeView: normalizeView(parsed.activeView),
         activeId: typeof parsed.activeId === "string" ? parsed.activeId : notes[0]?.id ?? null,
+        activeChecklistId: typeof parsed.activeChecklistId === "string" ? parsed.activeChecklistId : checklists[0]?.id ?? null,
         folders,
-        notes
+        notes,
+        checklists
       };
     }
   } catch {
@@ -316,7 +392,7 @@ function deriveTitleFromContent(content) {
   const trimmedContent = content.trim();
 
   if (!trimmedContent) {
-    return "Untitled note";
+    return "Untitled Note";
   }
 
   const codeFenceMatch = trimmedContent.match(/^```([a-z0-9_-]+)?/im);
@@ -332,12 +408,20 @@ function deriveTitleFromContent(content) {
 
   const firstMeaningfulLine = lines.find((line) => !/^```/.test(line));
   if (!firstMeaningfulLine) {
-    return "Untitled note";
+    return "Untitled Note";
   }
 
   return firstMeaningfulLine.length > 68
     ? `${firstMeaningfulLine.slice(0, 68).trimEnd()}...`
     : firstMeaningfulLine;
+}
+
+function getNextUntitledTitle(notes) {
+  const taken = new Set(notes.filter((n) => !n.isDeleted).map((n) => n.title));
+  if (!taken.has("Untitled Note")) return "Untitled Note";
+  let i = 2;
+  while (taken.has(`Untitled Note ${i}`)) i++;
+  return `Untitled Note ${i}`;
 }
 
 function matchesQuery(note, query) {
@@ -401,8 +485,9 @@ function getViewLabel(view, folders) {
   }
 
   const labels = {
-    all: "All notes",
-    pinned: "Pinned notes",
+    all: "All",
+    notes: "Notes",
+    pinned: "Pinned",
     favorites: "Favorites",
     shared: "Shared notes",
     inbound: "Shared to you",
@@ -411,7 +496,7 @@ function getViewLabel(view, folders) {
     trash: "Trash"
   };
 
-  return labels[view.kind] || "All notes";
+  return labels[view.kind] || "All";
 }
 
 function getSearchScopeLabel(note) {
@@ -450,7 +535,7 @@ function createVersionSnapshot(note, savedAt) {
   return {
     id: `${note.id}-version-${savedAt}`,
     savedAt,
-    title: note.title || "Untitled note",
+    title: note.title || "Untitled Note",
     content: note.content || "",
     tags: note.tags || [],
     collaborators: note.collaborators || [],
@@ -646,7 +731,6 @@ const isElectron = typeof navigator !== 'undefined' && /electron/i.test(navigato
 export default function App() {
   const [appState, setAppState] = useState(loadAppState);
   const [query, setQuery] = useState("");
-  const [isCompact, setIsCompact] = useState(false);
   const [isCollectionCollapsed, setIsCollectionCollapsed] = useState(() => loadUiPrefs().collectionCollapsed);
   const [isInspectorCollapsed, setIsInspectorCollapsed] = useState(() => loadUiPrefs().inspectorCollapsed);
   const [openTabs, setOpenTabs] = useState(() => {
@@ -661,10 +745,23 @@ export default function App() {
   const [collaboratorInput, setCollaboratorInput] = useState("");
   const [tagInput, setTagInput] = useState("");
   const [folderInput, setFolderInput] = useState("");
+  const [showSettings, setShowSettings] = useState(false);
+  const [settingsAnchor, setSettingsAnchor] = useState(null);
+  const [showLineNumbers, setShowLineNumbers] = useState(() => loadUiPrefs().showLineNumbers);
+  const [newItemText, setNewItemText] = useState("");
+  const [isTitleEditing, setIsTitleEditing] = useState(false);
+  const checklistTitleRef = useRef(null);
   const searchRef = useRef(null);
   const titleRef = useRef(null);
+  const settingsRef = useRef(null);
+  const settingsBtnRef = useRef(null);
+  const lineNumbersRef = useRef(null);
 
-  const { notes, folders, theme, activeView, activeId } = appState;
+  const { notes, folders, theme, activeView, activeId, checklists, activeChecklistId } = appState;
+  const activeChecklist = (checklists || []).find((cl) => cl.id === activeChecklistId) ?? null;
+  const activeTabChecklist = openTabs.includes(activeId)
+    ? (checklists || []).find((cl) => cl.id === activeId) ?? null
+    : null;
 
   const folderMap = useMemo(() => {
     return new Map(folders.map((folder) => [folder.id, folder]));
@@ -679,17 +776,15 @@ export default function App() {
     return sortNotes(candidates, cleanedQuery ? "search" : activeView.kind);
   }, [activeView, notes, query]);
 
-  const activeNote = notes.find((note) => note.id === activeId) || visibleNotes[0] || null;
+  const activeNote = openTabs.includes(activeId)
+    ? notes.find((note) => note.id === activeId) || null
+    : null;
 
   useEffect(() => {
-    if (!activeNote) {
-      return;
+    if (activeId && openTabs.length > 0 && !openTabs.includes(activeId)) {
+      setAppState((curr) => ({ ...curr, activeId: openTabs[openTabs.length - 1] }));
     }
-
-    if (!visibleNotes.some((note) => note.id === activeNote.id) && visibleNotes.length > 0) {
-      setAppState((current) => ({ ...current, activeId: visibleNotes[0].id }));
-    }
-  }, [activeNote, visibleNotes]);
+  }, [openTabs, activeId]);
 
   useEffect(() => {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
@@ -698,15 +793,12 @@ export default function App() {
   useEffect(() => {
     window.localStorage.setItem(UI_KEY, JSON.stringify({
       collectionCollapsed: isCollectionCollapsed,
-      inspectorCollapsed: isInspectorCollapsed
+      inspectorCollapsed: isInspectorCollapsed,
+      showLineNumbers
     }));
-  }, [isCollectionCollapsed, isInspectorCollapsed]);
+  }, [isCollectionCollapsed, isInspectorCollapsed, showLineNumbers]);
 
   useEffect(() => {
-    function handleScroll() {
-      setIsCompact(window.scrollY > 72);
-    }
-
     function handleShortcuts(event) {
       const modifier = event.metaKey || event.ctrlKey;
 
@@ -737,33 +829,49 @@ export default function App() {
       }
     }
 
-    handleScroll();
-    window.addEventListener("scroll", handleScroll, { passive: true });
     window.addEventListener("keydown", handleShortcuts);
-
-    return () => {
-      window.removeEventListener("scroll", handleScroll);
-      window.removeEventListener("keydown", handleShortcuts);
-    };
+    return () => window.removeEventListener("keydown", handleShortcuts);
   });
+
+  useEffect(() => {
+    if (!showSettings) return;
+    function handleOutside(e) {
+      const inBtn = settingsBtnRef.current && settingsBtnRef.current.contains(e.target);
+      const inPopover = settingsRef.current && settingsRef.current.contains(e.target);
+      if (!inBtn && !inPopover) {
+        setShowSettings(false);
+      }
+    }
+    document.addEventListener("mousedown", handleOutside);
+    return () => document.removeEventListener("mousedown", handleOutside);
+  }, [showSettings]);
+
+  useEffect(() => {
+    setIsTitleEditing(false);
+  }, [activeNote?.id]);
 
   const noteCounts = useMemo(() => {
     const visible = notes.filter((note) => !note.isDeleted && !note.isArchived);
     const archived = notes.filter((note) => note.isArchived && !note.isDeleted);
     const trash = notes.filter((note) => note.isDeleted);
     const shared = visible.filter((note) => note.collaborators.length > 0);
+    const activeTasks = (checklists || []).filter((cl) => !cl.isTrashed && !cl.isArchived);
+    const archivedTasks = (checklists || []).filter((cl) => cl.isArchived && !cl.isTrashed);
+    const trashedTasks = (checklists || []).filter((cl) => cl.isTrashed);
 
     return {
-      all: visible.length,
+      all: visible.length + activeTasks.length,
+      notes: visible.length,
+      tasks: activeTasks.length,
       pinned: visible.filter((note) => note.isPinned).length,
       favorites: visible.filter((note) => note.isFavorite).length,
       shared: shared.length,
       inbound: shared.filter((note) => note.shareDirection === "inbound").length,
       outbound: shared.filter((note) => note.shareDirection !== "inbound").length,
-      archive: archived.length,
-      trash: trash.length
+      archive: archived.length + archivedTasks.length,
+      trash: trash.length + trashedTasks.length
     };
-  }, [notes]);
+  }, [notes, checklists]);
 
   const folderCounts = useMemo(() => {
     return folders.map((folder) => ({
@@ -774,7 +882,8 @@ export default function App() {
 
   const folderName = activeNote ? folderMap.get(activeNote.folderId)?.name || "Folder" : "Folder";
   const viewLabel = query.trim() ? "Search results" : getViewLabel(activeView, folders);
-  const themeLabel = theme === "dark" ? "Switch to light mode" : "Switch to dark mode";
+  const lightThemes = THEMES.filter((t) => t.group === "light");
+  const darkThemes = THEMES.filter((t) => t.group === "dark");
 
   function commitNote(noteId, patch) {
     setAppState((current) => {
@@ -822,15 +931,101 @@ export default function App() {
     setAppState((current) => ({ ...current, activeId: noteId }));
   }
 
-  function closeTab(noteId) {
+  function openChecklistInTab(clId) {
+    setOpenTabs((prev) => (prev.includes(clId) ? prev : [...prev, clId]));
+    setAppState((current) => ({ ...current, activeId: clId, activeChecklistId: clId }));
+  }
+
+  function closeTab(tabId) {
     setOpenTabs((prev) => {
-      const next = prev.filter((id) => id !== noteId);
-      if (activeId === noteId) {
-        const idx = prev.indexOf(noteId);
-        const nextActiveId = next[idx] ?? next[idx - 1] ?? null;
-        setAppState((curr) => ({ ...curr, activeId: nextActiveId }));
-      }
+      const next = prev.filter((id) => id !== tabId);
+      const idx = prev.indexOf(tabId);
+      const nextActiveId = activeId === tabId
+        ? (next[idx] ?? next[idx - 1] ?? null)
+        : activeId;
+
+      setAppState((curr) => {
+        const note = curr.notes.find((n) => n.id === tabId);
+        const isEmpty = note &&
+          note.isTitleAuto &&
+          note.content === "" &&
+          note.tags.length === 0 &&
+          note.collaborators.length === 0;
+
+        return {
+          ...curr,
+          activeId: nextActiveId,
+          notes: isEmpty ? curr.notes.filter((n) => n.id !== tabId) : curr.notes
+        };
+      });
+
       return next;
+    });
+  }
+
+  function pinChecklist(id) {
+    setAppState((curr) => ({
+      ...curr,
+      checklists: (curr.checklists || []).map((cl) =>
+        cl.id === id ? { ...cl, isPinned: !cl.isPinned, updatedAt: nowIso() } : cl
+      )
+    }));
+  }
+
+  function favoriteChecklist(id) {
+    setAppState((curr) => ({
+      ...curr,
+      checklists: (curr.checklists || []).map((cl) =>
+        cl.id === id ? { ...cl, isFavorite: !cl.isFavorite, updatedAt: nowIso() } : cl
+      )
+    }));
+  }
+
+  function trashChecklist(id) {
+    setOpenTabs((prev) => {
+      const next = prev.filter((tid) => tid !== id);
+      setAppState((curr) => ({
+        ...curr,
+        checklists: (curr.checklists || []).map((cl) =>
+          cl.id === id ? { ...cl, isTrashed: true, isPinned: false, updatedAt: nowIso() } : cl
+        ),
+        activeId: curr.activeId === id ? (next[next.length - 1] ?? null) : curr.activeId
+      }));
+      return next;
+    });
+  }
+
+  function restoreChecklist(id) {
+    setAppState((curr) => ({
+      ...curr,
+      checklists: (curr.checklists || []).map((cl) =>
+        cl.id === id ? { ...cl, isTrashed: false, isArchived: false, updatedAt: nowIso() } : cl
+      )
+    }));
+  }
+
+  function archiveChecklist(id) {
+    setOpenTabs((prev) => {
+      const next = prev.filter((tid) => tid !== id);
+      setAppState((curr) => ({
+        ...curr,
+        checklists: (curr.checklists || []).map((cl) =>
+          cl.id === id ? { ...cl, isArchived: !cl.isArchived, updatedAt: nowIso() } : cl
+        ),
+        activeId: curr.activeId === id ? (next[next.length - 1] ?? null) : curr.activeId
+      }));
+      return next;
+    });
+  }
+
+  function permanentlyDeleteChecklist(id) {
+    setAppState((curr) => {
+      const remaining = (curr.checklists || []).filter((c) => c.id !== id);
+      return {
+        ...curr,
+        checklists: remaining,
+        activeChecklistId: curr.activeChecklistId === id ? (remaining[0]?.id ?? null) : curr.activeChecklistId
+      };
     });
   }
 
@@ -839,6 +1034,7 @@ export default function App() {
       ...current,
       activeView: nextView
     }));
+    setIsCollectionCollapsed(false);
   }
 
   function toggleSidebarSection(sectionKey) {
@@ -868,12 +1064,118 @@ export default function App() {
     setFolderInput("");
   }
 
+  function deleteFolder(folderId) {
+    setAppState((current) => {
+      const remainingFolders = current.folders.filter((f) => f.id !== folderId);
+      const fallbackId = remainingFolders[0]?.id || null;
+      const updatedNotes = current.notes.map((note) =>
+        note.folderId === folderId ? { ...note, folderId: fallbackId } : note
+      );
+      const nextView =
+        current.activeView.kind === "folder" && current.activeView.id === folderId
+          ? { kind: "all" }
+          : current.activeView;
+      return { ...current, folders: remainingFolders, notes: updatedNotes, activeView: nextView };
+    });
+  }
+
+  function createChecklist() {
+    const cl = normalizeChecklist({ id: createId(), title: "", items: [] });
+    setOpenTabs((prev) => [...prev, cl.id]);
+    setAppState((curr) => ({
+      ...curr,
+      checklists: [...(curr.checklists || []), cl],
+      activeChecklistId: cl.id,
+      activeId: cl.id
+    }));
+    window.requestAnimationFrame(() => checklistTitleRef.current?.focus());
+  }
+
+  function deleteChecklist(id) {
+    setAppState((curr) => {
+      const remaining = (curr.checklists || []).filter((c) => c.id !== id);
+      return {
+        ...curr,
+        checklists: remaining,
+        activeChecklistId: curr.activeChecklistId === id ? (remaining[0]?.id ?? null) : curr.activeChecklistId
+      };
+    });
+  }
+
+  function updateChecklistTitle(id, title) {
+    setAppState((curr) => ({
+      ...curr,
+      checklists: (curr.checklists || []).map((cl) =>
+        cl.id === id ? { ...cl, title, updatedAt: nowIso() } : cl
+      )
+    }));
+  }
+
+  function addChecklistItem(checklistId, text) {
+    if (!text.trim()) return;
+    const item = normalizeChecklistItem({ id: createId(), text: text.trim(), done: false });
+    setAppState((curr) => ({
+      ...curr,
+      checklists: (curr.checklists || []).map((cl) =>
+        cl.id === checklistId
+          ? { ...cl, items: [...cl.items, item], updatedAt: nowIso() }
+          : cl
+      )
+    }));
+  }
+
+  function toggleChecklistItem(checklistId, itemId) {
+    setAppState((curr) => ({
+      ...curr,
+      checklists: (curr.checklists || []).map((cl) =>
+        cl.id === checklistId
+          ? {
+              ...cl,
+              items: cl.items.map((item) =>
+                item.id === itemId ? { ...item, done: !item.done } : item
+              ),
+              updatedAt: nowIso()
+            }
+          : cl
+      )
+    }));
+  }
+
+  function deleteChecklistItem(checklistId, itemId) {
+    setAppState((curr) => ({
+      ...curr,
+      checklists: (curr.checklists || []).map((cl) =>
+        cl.id === checklistId
+          ? { ...cl, items: cl.items.filter((item) => item.id !== itemId), updatedAt: nowIso() }
+          : cl
+      )
+    }));
+  }
+
+  function updateChecklistItemText(checklistId, itemId, text) {
+    setAppState((curr) => ({
+      ...curr,
+      checklists: (curr.checklists || []).map((cl) =>
+        cl.id === checklistId
+          ? {
+              ...cl,
+              items: cl.items.map((item) =>
+                item.id === itemId ? { ...item, text } : item
+              ),
+              updatedAt: nowIso()
+            }
+          : cl
+      )
+    }));
+  }
+
   function handleCreateNote() {
     const defaultFolder = activeView.kind === "folder" ? activeView.id : folders[0]?.id;
     const note = normalizeNote(
       {
         id: createId(),
-        title: "Untitled note",
+        title: getNextUntitledTitle(notes),
+        isTitleAuto: true,
         content: "",
         tags: [],
         folderId: defaultFolder,
@@ -997,11 +1299,9 @@ export default function App() {
     });
   }
 
-  function toggleTheme() {
-    setAppState((current) => ({
-      ...current,
-      theme: current.theme === "dark" ? "light" : "dark"
-    }));
+  function applyTheme(name) {
+    setAppState((current) => ({ ...current, theme: name }));
+    setShowSettings(false);
   }
 
   function handleTitleChange(value) {
@@ -1085,7 +1385,7 @@ export default function App() {
 
         return {
           ...note,
-          title: version.title || "Untitled note",
+          title: version.title || "Untitled Note",
           content: version.content || "",
           tags: version.tags || [],
           collaborators: restoredCollaborators,
@@ -1105,60 +1405,39 @@ export default function App() {
 
   return (
     <main className={`app-shell theme-${theme}${isElectron ? ' electron-app' : ''}`}>
-      <div className="backdrop backdrop-a" aria-hidden="true" />
-      <div className="backdrop backdrop-b" aria-hidden="true" />
-
       <section className="notes-app" aria-label="Polished notes app">
-        <header className={`topbar ${isCompact ? "compact" : ""}`}>
-          <div className="brand">
-            <span className="brand-mark" aria-hidden="true">
-              N
-            </span>
-            <div>
-              <p className="eyebrow">Private workspace</p>
-              <h1>polished</h1>
-            </div>
-          </div>
-
-          <label className="search" htmlFor="note-search">
-            <span>Search notes</span>
-            <input
-              ref={searchRef}
-              id="note-search"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search title, body, or tags"
-              autoComplete="off"
-            />
-          </label>
-
-          <div className="toolbar-actions">
-            <button className="ghost-action" type="button" onClick={toggleTheme} aria-label={themeLabel}>
-              {theme === "dark" ? "Dark" : "Light"}
-            </button>
-            <button className="primary-action" type="button" onClick={handleCreateNote}>
-              New note
-            </button>
-          </div>
-        </header>
-
         <div className={`workspace-grid${isCollectionCollapsed ? " collection-collapsed" : ""}${isInspectorCollapsed ? " inspector-collapsed" : ""}`}>
           <nav className="sidebar" aria-label="Navigation">
+            <div className="sidebar-body">
+            <button
+              type="button"
+              className="sidebar-search-trigger"
+              aria-label="Open search"
+              onClick={() => {
+                if (isCollectionCollapsed) setIsCollectionCollapsed(false);
+                window.requestAnimationFrame(() => searchRef.current?.focus());
+              }}
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
+              Search
+            </button>
+
             <div className="sidebar-section">
-              <div className="section-heading">
+              <button
+                type="button"
+                className={`section-heading${sidebarSections.workspace ? " open" : ""}`}
+                aria-label={sidebarSections.workspace ? "Collapse workspace" : "Expand workspace"}
+                onClick={() => toggleSidebarSection("workspace")}
+              >
                 <div className="section-heading-copy">
                   <p className="eyebrow">Workspace</p>
-                  <span>{noteCounts.all} active</span>
+                  <span>{noteCounts.notes} notes · {noteCounts.tasks} tasks</span>
                 </div>
-                <button
-                  type="button"
-                  className={`section-toggle ${sidebarSections.workspace ? "open" : ""}`}
-                  aria-label={sidebarSections.workspace ? "Collapse workspace" : "Expand workspace"}
-                  onClick={() => toggleSidebarSection("workspace")}
-                >
-                  <span aria-hidden="true">▾</span>
-                </button>
-              </div>
+                <span className="section-toggle-arrow" aria-hidden="true">▾</span>
+              </button>
 
               {sidebarSections.workspace && (
                 <div className="sidebar-section-body">
@@ -1167,8 +1446,24 @@ export default function App() {
                     className={`nav-item ${activeView.kind === "all" ? "active" : ""}`}
                     onClick={() => handleSelectView({ kind: "all" })}
                   >
-                    <span>All notes</span>
+                    <span>All</span>
                     <strong>{noteCounts.all}</strong>
+                  </button>
+                  <button
+                    type="button"
+                    className={`nav-item ${activeView.kind === "notes" ? "active" : ""}`}
+                    onClick={() => handleSelectView({ kind: "notes" })}
+                  >
+                    <span>Notes</span>
+                    <strong>{noteCounts.notes}</strong>
+                  </button>
+                  <button
+                    type="button"
+                    className={`nav-item ${activeView.kind === "tasks" ? "active" : ""}`}
+                    onClick={() => handleSelectView({ kind: "tasks" })}
+                  >
+                    <span>Tasks</span>
+                    <strong>{noteCounts.tasks || ""}</strong>
                   </button>
                   <button
                     type="button"
@@ -1207,83 +1502,95 @@ export default function App() {
             </div>
 
             <div className="sidebar-section">
-              <div className="section-heading">
+              <button
+                type="button"
+                className={`section-heading${sidebarSections.folders ? " open" : ""}`}
+                aria-label={sidebarSections.folders ? "Collapse folders" : "Expand folders"}
+                onClick={() => toggleSidebarSection("folders")}
+              >
                 <div className="section-heading-copy">
                   <p className="eyebrow">Folders</p>
                   <span>{folders.length} spaces</span>
                 </div>
-                <button
-                  type="button"
-                  className={`section-toggle ${sidebarSections.folders ? "open" : ""}`}
-                  aria-label={sidebarSections.folders ? "Collapse folders" : "Expand folders"}
-                  onClick={() => toggleSidebarSection("folders")}
-                >
-                  <span aria-hidden="true">▾</span>
-                </button>
-              </div>
+                <span className="section-toggle-arrow" aria-hidden="true">▾</span>
+              </button>
 
               {sidebarSections.folders && (
                 <div className="sidebar-section-body">
                   <div className="sidebar-inline-form">
-                    <input
-                      aria-label="Folder name"
-                      value={folderInput}
-                      onChange={(event) => setFolderInput(event.target.value)}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter") {
-                          event.preventDefault();
-                          createFolder();
-                        }
-                      }}
-                      placeholder="New folder"
-                    />
+                    <div className="search-box">
+                      <span className="search-box-icon" aria-hidden="true">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+                        </svg>
+                      </span>
+                      <input
+                        aria-label="Folder name"
+                        value={folderInput}
+                        onChange={(event) => setFolderInput(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter") {
+                            event.preventDefault();
+                            createFolder();
+                          }
+                        }}
+                        placeholder="New folder"
+                      />
+                    </div>
                     <button
                       type="button"
                       className="ghost-action inline-add"
                       onClick={createFolder}
+                      aria-label="Add folder"
                     >
-                      Add
+                      +
                     </button>
                   </div>
                   {folderCounts.map((folder) => (
-                    <button
-                      type="button"
+                    <div
                       key={folder.id}
                       className={`nav-item folder-item ${
                         activeView.kind === "folder" && activeView.id === folder.id ? "active" : ""
                       }`}
-                      onClick={() => handleSelectView({ kind: "folder", id: folder.id })}
                     >
-                      <span>
+                      <button
+                        type="button"
+                        className="folder-select"
+                        onClick={() => handleSelectView({ kind: "folder", id: folder.id })}
+                      >
                         <span className={`folder-dot folder-${folder.color}`} aria-hidden="true" />
                         {folder.name}
-                      </span>
-                      <strong>{folder.count}</strong>
-                    </button>
+                      </button>
+                      <div className="folder-item-right">
+                        <strong>{folder.count}</strong>
+                        <button
+                          type="button"
+                          className="folder-delete"
+                          aria-label={`Delete folder ${folder.name}`}
+                          onClick={() => deleteFolder(folder.id)}
+                        >
+                          ×
+                        </button>
+                      </div>
+                    </div>
                   ))}
                 </div>
               )}
             </div>
 
             <div className="sidebar-section">
-              <div className="section-heading">
+              <button
+                type="button"
+                className={`section-heading${sidebarSections.collaboration ? " open" : ""}`}
+                aria-label={sidebarSections.collaboration ? "Collapse collaboration" : "Expand collaboration"}
+                onClick={() => toggleSidebarSection("collaboration")}
+              >
                 <div className="section-heading-copy">
                   <p className="eyebrow">Collaboration</p>
                   <span>{noteCounts.shared} shared</span>
                 </div>
-                <button
-                  type="button"
-                  className={`section-toggle ${sidebarSections.collaboration ? "open" : ""}`}
-                  aria-label={
-                    sidebarSections.collaboration
-                      ? "Collapse collaboration"
-                      : "Expand collaboration"
-                  }
-                  onClick={() => toggleSidebarSection("collaboration")}
-                >
-                  <span aria-hidden="true">▾</span>
-                </button>
-              </div>
+                <span className="section-toggle-arrow" aria-hidden="true">▾</span>
+              </button>
 
               {sidebarSections.collaboration && (
                 <div className="sidebar-section-body">
@@ -1329,115 +1636,458 @@ export default function App() {
                 </li>
               </ul>
             </div>
+            </div>
+
+            <div className="sidebar-footer">
+              <button
+                ref={settingsBtnRef}
+                type="button"
+                className={`settings-btn${showSettings ? " open" : ""}`}
+                aria-label="Appearance settings"
+                onClick={() => {
+                  if (!showSettings) {
+                    const rect = settingsBtnRef.current?.getBoundingClientRect();
+                    if (rect) setSettingsAnchor({ bottom: window.innerHeight - rect.top + 8, left: rect.left });
+                  }
+                  setShowSettings((v) => !v);
+                }}
+              >
+                ⚙
+              </button>
+              {showSettings && settingsAnchor && createPortal(
+                <div
+                  ref={settingsRef}
+                  className="settings-popover"
+                  style={{ position: "fixed", bottom: settingsAnchor.bottom, left: settingsAnchor.left }}
+                >
+                  <div>
+                    <p className="settings-group-label">Light</p>
+                    <div className="theme-grid">
+                      {lightThemes.map((t) => (
+                        <button
+                          key={t.id}
+                          type="button"
+                          className={`theme-option${theme === t.id ? " active" : ""}`}
+                          onClick={() => applyTheme(t.id)}
+                          aria-label={`${t.label} theme`}
+                        >
+                          <span className="theme-option-swatch" style={{ background: t.bg, borderColor: t.accent }} />
+                          <span className="theme-option-label">{t.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="settings-group-label">Dark</p>
+                    <div className="theme-grid">
+                      {darkThemes.map((t) => (
+                        <button
+                          key={t.id}
+                          type="button"
+                          className={`theme-option${theme === t.id ? " active" : ""}`}
+                          onClick={() => applyTheme(t.id)}
+                          aria-label={`${t.label} theme`}
+                        >
+                          <span className="theme-option-swatch" style={{ background: t.bg, borderColor: t.accent }} />
+                          <span className="theme-option-label">{t.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="settings-divider" />
+                  <div>
+                    <p className="settings-group-label">Editor</p>
+                    <div className="settings-row">
+                      <span className="settings-row-label">Line numbers</span>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={showLineNumbers}
+                        className={`toggle-pill${showLineNumbers ? " on" : ""}`}
+                        onClick={() => setShowLineNumbers((v) => !v)}
+                        aria-label="Toggle line numbers"
+                      >
+                        <span className="toggle-pill-thumb" />
+                      </button>
+                    </div>
+                  </div>
+                </div>,
+                document.body
+              )}
+            </div>
           </nav>
 
           <section className={`list-panel${isCollectionCollapsed ? " list-panel--collapsed" : ""}`} aria-label="Notes list">
-            {isCollectionCollapsed && (
+            <div className="collection-toggle-row">
               <button
                 type="button"
-                className="list-panel-expand"
-                onClick={() => setIsCollectionCollapsed(false)}
-                aria-label="Expand collection"
+                className="collection-toggle-btn"
+                onClick={() => setIsCollectionCollapsed((v) => !v)}
+                aria-label={isCollectionCollapsed ? "Expand collection" : "Collapse collection"}
+                title="Collection"
               >
-                <span aria-hidden="true">›</span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                  <line x1="9" y1="3" x2="9" y2="21" />
+                </svg>
               </button>
-            )}
+            </div>
             <div className="list-panel-content">
-              <div className="panel-head">
-                <div>
-                  <p className="eyebrow">Collection</p>
-                  <h3>{viewLabel}</h3>
-                </div>
-                <div className="panel-head-actions">
-                  <span>{query.trim() ? "Across workspace" : `${visibleNotes.length} shown`}</span>
-                  <button
-                    type="button"
-                    className="list-panel-collapse"
-                    onClick={() => setIsCollectionCollapsed(true)}
-                    aria-label="Collapse collection"
-                  >
-                    ‹
-                  </button>
-                </div>
-              </div>
-
-              <div className="panel-summary" aria-label="Note statistics">
-                {query.trim() ? (
-                  <>
-                    <span>{visibleNotes.length} matches</span>
-                    <span>{notes.length} total notes</span>
-                    <span>Includes archive and trash</span>
-                  </>
-                ) : ["shared", "inbound", "outbound"].includes(activeView.kind) ? (
-                  <>
-                    <span>{noteCounts.shared} shared notes</span>
-                    <span>{noteCounts.outbound} shared by you</span>
-                    <span>{noteCounts.inbound} shared to you</span>
-                  </>
-                ) : (
-                  <>
-                    <span>{noteCounts.pinned} pinned</span>
-                    <span>{noteCounts.favorites} favorites</span>
-                  </>
-                )}
-              </div>
-
-              <div className="note-list" role="list">
-                {visibleNotes.length > 0 ? (
-                  visibleNotes.map((note) => {
-                    const selected = note.id === activeNote?.id;
-
-                    return (
-                      <button
-                        type="button"
-                        role="listitem"
-                        key={note.id}
-                        className={`note-card ${selected ? "active" : ""}`}
-                        onClick={() => openNoteInTab(note.id)}
-                      >
-                        <div className="note-card-head">
-                          <strong>{note.title || "Untitled note"}</strong>
-                          <span>{formatDateTime(note.updatedAt)}</span>
-                        </div>
-                        <p>{previewText(note)}</p>
-                      </button>
-                    );
-                  })
-                ) : (
-                  <div className="empty-state">
-                    <h3>No notes here yet</h3>
-                    <p>Create a note in this view or clear your search to see more results.</p>
-                    <button type="button" className="primary-action" onClick={handleCreateNote}>
-                      Create note
+              {activeView.kind === "tasks" ? (
+                <>
+                  <div className="collection-panel-actions">
+                    <button type="button" className="ghost-action" onClick={createChecklist} aria-label="New checklist">
+                      +
                     </button>
                   </div>
-                )}
-              </div>
+                  <div className="note-list" role="list">
+                    {(() => {
+                      const active = [...(checklists || [])]
+                        .filter((cl) => !cl.isTrashed && !cl.isArchived)
+                        .sort((a, b) => {
+                          if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
+                          if (a.isFavorite !== b.isFavorite) return a.isFavorite ? -1 : 1;
+                          return new Date(b.updatedAt) - new Date(a.updatedAt);
+                        });
+                      return active.length > 0 ? active.map((cl) => {
+                        const total = cl.items.length;
+                        const done = cl.items.filter((i) => i.done).length;
+                        const remaining = total - done;
+                        return (
+                          <div key={cl.id} className={`note-card checklist-card${cl.id === activeId && activeTabChecklist ? " active" : ""}`}>
+                            <button
+                              type="button"
+                              className="checklist-card-select"
+                              onClick={() => openChecklistInTab(cl.id)}
+                            >
+                              <div className="note-card-head">
+                                <strong>
+                                  {cl.isPinned && <span aria-hidden="true">📌 </span>}
+                                  {cl.isFavorite && <span aria-hidden="true">★ </span>}
+                                  {cl.title || <em style={{ opacity: 0.45 }}>Untitled</em>}
+                                </strong>
+                              </div>
+                              <p>{total === 0 ? "No items" : remaining === 0 ? "All done" : `${remaining} remaining · ${done} done`}</p>
+                            </button>
+                            <button
+                              type="button"
+                              className="folder-delete"
+                              aria-label={`Move to trash ${cl.title}`}
+                              onClick={() => trashChecklist(cl.id)}
+                            >
+                              ×
+                            </button>
+                          </div>
+                        );
+                      }) : (
+                        <div className="empty-state">
+                          <h3>No tasks yet</h3>
+                          <p>Create a task list to start tracking your work.</p>
+                          <button type="button" className="primary-action" onClick={createChecklist}>
+                            New task list
+                          </button>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="search collection-search">
+                    <div className="search-box">
+                      <span className="search-box-icon" aria-hidden="true">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <circle cx="11" cy="11" r="8" />
+                          <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                        </svg>
+                      </span>
+                      <input
+                        ref={searchRef}
+                        id="note-search"
+                        aria-label="Search notes"
+                        value={query}
+                        onChange={(event) => setQuery(event.target.value)}
+                        placeholder="Search"
+                        autoComplete="off"
+                      />
+                    </div>
+                  </div>
+
+                  {query.trim() ? (
+                    <>
+                      <div className="collection-panel-actions">
+                        <span>Across workspace</span>
+                      </div>
+                      <div className="panel-summary" aria-label="Note statistics">
+                        <span>{visibleNotes.length} matches</span>
+                        <span>{notes.length} total notes</span>
+                        <span>Includes archive and trash</span>
+                      </div>
+                      <div className="note-list" role="list">
+                        {visibleNotes.length > 0 ? visibleNotes.map((note) => {
+                          const selected = note.id === activeNote?.id;
+                          return (
+                            <button
+                              type="button"
+                              role="listitem"
+                              key={note.id}
+                              className={`note-card ${selected ? "active" : ""}`}
+                              onClick={() => openNoteInTab(note.id)}
+                            >
+                              <div className="note-card-head">
+                                <strong>{note.title || "Untitled Note"}</strong>
+                                <span>{formatDateTime(note.updatedAt)}</span>
+                              </div>
+                              <p>{previewText(note)}</p>
+                            </button>
+                          );
+                        }) : (
+                          <div className="empty-state">
+                            <h3>No results</h3>
+                            <p>No notes matched your search.</p>
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  ) : activeView.kind === "trash" ? (
+                    <div className="note-list" role="list">
+                      {(() => {
+                        const trashedNotes = notes.filter((n) => n.isDeleted);
+                        const trashedTasks = (checklists || []).filter((cl) => cl.isTrashed);
+                        const hasAny = trashedNotes.length > 0 || trashedTasks.length > 0;
+                        if (!hasAny) {
+                          return (
+                            <div className="empty-state">
+                              <h3>Trash is empty</h3>
+                              <p>Deleted notes and tasks appear here.</p>
+                            </div>
+                          );
+                        }
+                        return (
+                          <>
+                            {trashedNotes.map((note) => {
+                              const selected = note.id === activeNote?.id;
+                              return (
+                                <button
+                                  type="button"
+                                  role="listitem"
+                                  key={note.id}
+                                  className={`note-card ${selected ? "active" : ""}`}
+                                  onClick={() => openNoteInTab(note.id)}
+                                >
+                                  <div className="note-card-head">
+                                    <strong>{note.title || "Untitled Note"}</strong>
+                                    <span>{formatDateTime(note.updatedAt)}</span>
+                                  </div>
+                                  <p>{previewText(note)}</p>
+                                </button>
+                              );
+                            })}
+                            {trashedTasks.map((cl) => (
+                              <div key={cl.id} className="note-card checklist-card unified-card">
+                                <div className="unified-card-body">
+                                  <strong>{cl.title || <em style={{ opacity: 0.45 }}>Untitled task</em>}</strong>
+                                  <p>{cl.items.length === 0 ? "No items" : `${cl.items.length} item${cl.items.length !== 1 ? "s" : ""}`}</p>
+                                </div>
+                                <div className="unified-card-actions">
+                                  <button type="button" className="ghost-action" onClick={() => restoreChecklist(cl.id)}>Restore</button>
+                                  <button type="button" className="danger-action" onClick={() => permanentlyDeleteChecklist(cl.id)}>Delete</button>
+                                </div>
+                              </div>
+                            ))}
+                          </>
+                        );
+                      })()}
+                    </div>
+                  ) : activeView.kind === "archive" ? (
+                    <div className="note-list" role="list">
+                      {(() => {
+                        const archivedNotes = notes.filter((n) => n.isArchived && !n.isDeleted);
+                        const archivedTasks = (checklists || []).filter((cl) => cl.isArchived && !cl.isTrashed);
+                        const hasAny = archivedNotes.length > 0 || archivedTasks.length > 0;
+                        if (!hasAny) {
+                          return (
+                            <div className="empty-state">
+                              <h3>Archive is empty</h3>
+                              <p>Archived notes and tasks appear here.</p>
+                            </div>
+                          );
+                        }
+                        return (
+                          <>
+                            {archivedNotes.map((note) => {
+                              const selected = note.id === activeNote?.id;
+                              return (
+                                <button
+                                  type="button"
+                                  role="listitem"
+                                  key={note.id}
+                                  className={`note-card ${selected ? "active" : ""}`}
+                                  onClick={() => openNoteInTab(note.id)}
+                                >
+                                  <div className="note-card-head">
+                                    <strong>{note.title || "Untitled Note"}</strong>
+                                    <span>{formatDateTime(note.updatedAt)}</span>
+                                  </div>
+                                  <p>{previewText(note)}</p>
+                                </button>
+                              );
+                            })}
+                            {archivedTasks.map((cl) => (
+                              <div key={cl.id} className="note-card checklist-card unified-card">
+                                <div className="unified-card-body">
+                                  <strong>{cl.title || <em style={{ opacity: 0.45 }}>Untitled task</em>}</strong>
+                                  <p>{cl.items.length === 0 ? "No items" : `${cl.items.length} item${cl.items.length !== 1 ? "s" : ""}`}</p>
+                                </div>
+                                <div className="unified-card-actions">
+                                  <button type="button" className="ghost-action" onClick={() => restoreChecklist(cl.id)}>Restore</button>
+                                </div>
+                              </div>
+                            ))}
+                          </>
+                        );
+                      })()}
+                    </div>
+                  ) : activeView.kind === "all" ? (
+                    <>
+                      <div className="panel-summary" aria-label="Note statistics">
+                        <span>{noteCounts.notes} notes</span>
+                        <span>{noteCounts.tasks} tasks</span>
+                      </div>
+                      <div className="note-list" role="list">
+                        {(() => {
+                          const activeTasks = [...(checklists || [])]
+                            .filter((cl) => !cl.isTrashed && !cl.isArchived);
+                          const allItems = [...visibleNotes, ...activeTasks].sort(
+                            (a, b) => new Date(b.updatedAt) - new Date(a.updatedAt)
+                          );
+                          if (allItems.length === 0) {
+                            return (
+                              <div className="empty-state">
+                                <h3>Nothing here yet</h3>
+                                <p>Create a note or task to get started.</p>
+                                <button type="button" className="primary-action" onClick={handleCreateNote}>
+                                  Create note
+                                </button>
+                              </div>
+                            );
+                          }
+                          return allItems.map((item) => {
+                            const isTask = "items" in item;
+                            if (isTask) {
+                              const total = item.items.length;
+                              const done = item.items.filter((i) => i.done).length;
+                              const remaining = total - done;
+                              return (
+                                <div key={item.id} className={`note-card checklist-card${item.id === activeId && activeTabChecklist ? " active" : ""}`}>
+                                  <button
+                                    type="button"
+                                    className="checklist-card-select"
+                                    onClick={() => openChecklistInTab(item.id)}
+                                  >
+                                    <div className="note-card-head">
+                                      <strong>{item.title || <em style={{ opacity: 0.45 }}>Untitled</em>}</strong>
+                                      <span className="card-type-tag">Task</span>
+                                    </div>
+                                    <p>{total === 0 ? "No items" : remaining === 0 ? "All done" : `${remaining} remaining · ${done} done`}</p>
+                                  </button>
+                                </div>
+                              );
+                            }
+                            const selected = item.id === activeNote?.id;
+                            return (
+                              <button
+                                type="button"
+                                role="listitem"
+                                key={item.id}
+                                className={`note-card ${selected ? "active" : ""}`}
+                                onClick={() => openNoteInTab(item.id)}
+                              >
+                                <div className="note-card-head">
+                                  <strong>{item.title || "Untitled Note"}</strong>
+                                  <span>{formatDateTime(item.updatedAt)}</span>
+                                </div>
+                                <p>{previewText(item)}</p>
+                              </button>
+                            );
+                          });
+                        })()}
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="panel-summary" aria-label="Note statistics">
+                        {["shared", "inbound", "outbound"].includes(activeView.kind) ? (
+                          <>
+                            <span>{noteCounts.shared} shared notes</span>
+                            <span>{noteCounts.outbound} shared by you</span>
+                            <span>{noteCounts.inbound} shared to you</span>
+                          </>
+                        ) : null}
+                      </div>
+                      <div className="note-list" role="list">
+                        {visibleNotes.length > 0 ? (
+                          visibleNotes.map((note) => {
+                            const selected = note.id === activeNote?.id;
+                            return (
+                              <button
+                                type="button"
+                                role="listitem"
+                                key={note.id}
+                                className={`note-card ${selected ? "active" : ""}`}
+                                onClick={() => openNoteInTab(note.id)}
+                              >
+                                <div className="note-card-head">
+                                  <strong>{note.title || "Untitled Note"}</strong>
+                                  <span>{formatDateTime(note.updatedAt)}</span>
+                                </div>
+                                <p>{previewText(note)}</p>
+                              </button>
+                            );
+                          })
+                        ) : (
+                          <div className="empty-state">
+                            <h3>No notes here yet</h3>
+                            <p>Create a note in this view or clear your search to see more results.</p>
+                            <button type="button" className="primary-action" onClick={handleCreateNote}>
+                              Create note
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </>
+              )}
             </div>
           </section>
 
           <section className="editor-panel" aria-label="Note editor">
             <div className="tab-bar">
               <div className="tab-list" role="tablist">
-                {openTabs.map((noteId) => {
-                  const tabNote = notes.find((n) => n.id === noteId);
-                  if (!tabNote) return null;
-                  const isActive = noteId === activeId;
+                {openTabs.map((tabId) => {
+                  const tabNote = notes.find((n) => n.id === tabId);
+                  const tabCl = !tabNote ? (checklists || []).find((cl) => cl.id === tabId) : null;
+                  if (!tabNote && !tabCl) return null;
+                  const isActive = tabId === activeId;
+                  const tabTitle = tabNote
+                    ? (tabNote.title || "Untitled Note")
+                    : (tabCl.title || "Untitled checklist");
                   return (
-                    <div key={noteId} className={`tab${isActive ? " active" : ""}`} role="tab">
+                    <div key={tabId} className={`tab${isActive ? " active" : ""}`} role="tab">
                       <button
                         type="button"
                         className="tab-label"
-                        onClick={() => openNoteInTab(noteId)}
+                        onClick={() => tabNote ? openNoteInTab(tabId) : openChecklistInTab(tabId)}
                         aria-selected={isActive}
                       >
-                        {tabNote.title || "Untitled note"}
+                        {tabTitle}
                       </button>
                       <button
                         type="button"
                         className="tab-close"
-                        onClick={() => closeTab(noteId)}
-                        aria-label={`Close ${tabNote.title || "Untitled note"}`}
+                        onClick={() => closeTab(tabId)}
+                        aria-label={`Close ${tabTitle}`}
                       >
                         ×
                       </button>
@@ -1446,44 +2096,159 @@ export default function App() {
                 })}
               </div>
               <div className="tab-bar-end">
-                <button type="button" className="tab-new-btn" onClick={handleCreateNote} aria-label="New tab">
+                <button type="button" className="tab-new-btn" onClick={handleCreateNote} aria-label="New note">
                   +
-                </button>
-                <button
-                  type="button"
-                  className={`inspector-toggle-btn${!isInspectorCollapsed ? " open" : ""}`}
-                  onClick={() => setIsInspectorCollapsed((v) => !v)}
-                  aria-label={isInspectorCollapsed ? "Show inspector" : "Hide inspector"}
-                >
-                  <span aria-hidden="true">›</span>
                 </button>
               </div>
             </div>
 
           <div className="editor-scroll">
-            {activeNote ? (
+            {openTabs.length === 0 ? (
+              <div className="empty-state editor-empty editor-welcome">
+                <p className="editor-welcome-label">Start something new</p>
+                <div className="editor-welcome-actions">
+                  <button type="button" className="primary-action" onClick={handleCreateNote}>
+                    Create Note
+                  </button>
+                  <button
+                    type="button"
+                    className="ghost-action"
+                    onClick={() => {
+                      handleSelectView({ kind: "tasks" });
+                      createChecklist();
+                    }}
+                  >
+                    Create Task
+                  </button>
+                </div>
+              </div>
+            ) : activeTabChecklist ? (
+                <div className="checklist-editor">
+                  <input
+                    ref={checklistTitleRef}
+                    className="checklist-editor-title"
+                    value={activeTabChecklist.title}
+                    onChange={(e) => updateChecklistTitle(activeTabChecklist.id, e.target.value)}
+                    placeholder="Name this list…"
+                    aria-label="Checklist title"
+                  />
+
+                  <div className="checklist-add-row">
+                    <span className="checklist-add-icon" aria-hidden="true">+</span>
+                    <input
+                      className="checklist-add-input"
+                      value={newItemText}
+                      onChange={(e) => setNewItemText(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && newItemText.trim()) {
+                          e.preventDefault();
+                          addChecklistItem(activeTabChecklist.id, newItemText);
+                          setNewItemText("");
+                        }
+                      }}
+                      placeholder="Add an item…"
+                      aria-label="New checklist item"
+                    />
+                  </div>
+
+                  <div className="checklist-items">
+                    {[
+                      ...activeTabChecklist.items.filter((i) => !i.done),
+                      ...activeTabChecklist.items.filter((i) => i.done)
+                    ].map((item) => (
+                      <div key={item.id} className={`checklist-item${item.done ? " done" : ""}`}>
+                        <button
+                          type="button"
+                          className="checklist-checkbox"
+                          role="checkbox"
+                          aria-checked={item.done}
+                          aria-label={item.done ? "Mark incomplete" : "Mark complete"}
+                          onClick={() => toggleChecklistItem(activeTabChecklist.id, item.id)}
+                        >
+                          {item.done && (
+                            <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="2 6 5 9 10 3" />
+                            </svg>
+                          )}
+                        </button>
+                        <input
+                          className="checklist-item-text"
+                          value={item.text}
+                          onChange={(e) => updateChecklistItemText(activeTabChecklist.id, item.id, e.target.value)}
+                          aria-label="Item text"
+                        />
+                        <button
+                          type="button"
+                          className="checklist-item-delete"
+                          aria-label="Delete item"
+                          onClick={() => deleteChecklistItem(activeTabChecklist.id, item.id)}
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+
+                  {activeTabChecklist.items.length > 0 && (
+                    <div className="checklist-progress">
+                      <div
+                        className="checklist-progress-bar"
+                        style={{ width: `${Math.round((activeTabChecklist.items.filter((i) => i.done).length / activeTabChecklist.items.length) * 100)}%` }}
+                      />
+                    </div>
+                  )}
+                </div>
+            ) : activeNote ? (
               <>
                 <label className="editor-field editor-title">
                   <span>Title</span>
                   <input
                     ref={titleRef}
-                    value={activeNote.title}
+                    value={activeNote.isTitleAuto && isTitleEditing ? "" : activeNote.title}
                     onChange={(event) => handleTitleChange(event.target.value)}
-                    placeholder="Untitled note"
+                    onClick={() => { if (activeNote.isTitleAuto) setIsTitleEditing(true); }}
+                    onBlur={() => setIsTitleEditing(false)}
+                    placeholder={activeNote.title || "Untitled Note"}
                   />
                 </label>
 
-                <label className="editor-field editor-body">
+                <label className={`editor-field editor-body${showLineNumbers ? " show-line-numbers" : ""}`}>
                   <span>Body</span>
-                  <textarea
-                    aria-label="Body"
-                    value={activeNote.content}
-                    onChange={(event) => handleBodyChange(event.target.value)}
-                    placeholder="Write your note here."
-                    rows={14}
-                  />
+                  <div className="editor-body-inner">
+                    {showLineNumbers && (
+                      <div
+                        className="line-numbers-gutter"
+                        ref={lineNumbersRef}
+                        aria-hidden="true"
+                      >
+                        {activeNote.content.split("\n").map((_, i) => (
+                          <div key={i} className="line-number">{i + 1}</div>
+                        ))}
+                      </div>
+                    )}
+                    <textarea
+                      aria-label="Body"
+                      value={activeNote.content}
+                      onChange={(event) => handleBodyChange(event.target.value)}
+                      onScroll={(event) => {
+                        if (lineNumbersRef.current) {
+                          lineNumbersRef.current.scrollTop = event.target.scrollTop;
+                        }
+                      }}
+                      placeholder="Write your note here."
+                      rows={14}
+                    />
+                  </div>
                 </label>
               </>
+            ) : activeView.kind === "tasks" ? (
+              <div className="empty-state editor-empty">
+                <h3>No checklist open</h3>
+                <p>Pick a checklist from the list or create a new one.</p>
+                <button type="button" className="primary-action" onClick={createChecklist}>
+                  New checklist
+                </button>
+              </div>
             ) : (
               <div className="empty-state editor-empty">
                 <h3>No note selected</h3>
@@ -1515,14 +2280,81 @@ export default function App() {
             className={`inspector-panel${isInspectorCollapsed ? " inspector-panel--collapsed" : ""}`}
             aria-label="Inspector"
           >
+            <div className="inspector-toggle-row">
+              <button
+                type="button"
+                className={`inspector-toggle-btn${!isInspectorCollapsed ? " active" : ""}`}
+                onClick={() => setIsInspectorCollapsed((v) => !v)}
+                aria-label={isInspectorCollapsed ? "Expand inspector" : "Collapse inspector"}
+                title="Inspector"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                  <line x1="16" y1="3" x2="16" y2="21" />
+                </svg>
+              </button>
+            </div>
             <div className="inspector-content">
-              {activeNote && (
+              {activeTabChecklist ? (
                 <>
                   <div className="inspector-head">
-                    <div>
-                      <p className="eyebrow">Page</p>
-                      <h3>{folderName}</h3>
+                    <p className="eyebrow">Inspector</p>
+                    <span className="inspector-note-location">Tasks</span>
+                  </div>
+
+                  <div className="inspector-actions">
+                    <button type="button" className="ghost-action" onClick={() => pinChecklist(activeTabChecklist.id)}>
+                      {activeTabChecklist.isPinned ? "Unpin" : "Pin"}
+                    </button>
+                    <button type="button" className="ghost-action" onClick={() => favoriteChecklist(activeTabChecklist.id)}>
+                      {activeTabChecklist.isFavorite ? "Unfavorite" : "Favorite"}
+                    </button>
+                    <button type="button" className="ghost-action" onClick={() => archiveChecklist(activeTabChecklist.id)}>
+                      {activeTabChecklist.isArchived ? "Unarchive" : "Archive"}
+                    </button>
+                    {activeTabChecklist.isTrashed ? (
+                      <>
+                        <button type="button" className="ghost-action" onClick={() => restoreChecklist(activeTabChecklist.id)}>
+                          Restore
+                        </button>
+                        <button type="button" className="danger-action" onClick={() => permanentlyDeleteChecklist(activeTabChecklist.id)}>
+                          Delete forever
+                        </button>
+                      </>
+                    ) : (
+                      <button type="button" className="danger-action" onClick={() => trashChecklist(activeTabChecklist.id)}>
+                        Move to trash
+                      </button>
+                    )}
+                  </div>
+
+                  <details className="editor-drawer" open>
+                    <summary>Details</summary>
+                    <div className="drawer-grid">
+                      <div className="drawer-stack">
+                        <span className="eyebrow">Progress</span>
+                        <span>
+                          {activeTabChecklist.items.length === 0
+                            ? "No items"
+                            : `${activeTabChecklist.items.filter((i) => i.done).length} of ${activeTabChecklist.items.length} done`}
+                        </span>
+                      </div>
+                      <div className="drawer-stack">
+                        <span className="eyebrow">Created</span>
+                        <span>{formatDateTime(activeTabChecklist.createdAt)}</span>
+                      </div>
+                      <div className="drawer-stack">
+                        <span className="eyebrow">Updated</span>
+                        <span>{formatDateTime(activeTabChecklist.updatedAt)}</span>
+                      </div>
                     </div>
+                  </details>
+                </>
+              ) : activeNote ? (
+                <>
+                  <div className="inspector-head">
+                    <p className="eyebrow">Inspector</p>
+                    <span className="inspector-note-location">{folderName}</span>
                   </div>
 
                   <div className="inspector-actions">
@@ -1603,7 +2435,7 @@ export default function App() {
                               aria-label={`Remove tag ${tag}`}
                             >
                               <span>{tag}</span>
-                              <strong>x</strong>
+                              <span aria-hidden="true">×</span>
                             </button>
                           ))
                         ) : (
@@ -1681,7 +2513,7 @@ export default function App() {
                               aria-label={`Remove ${handle}`}
                             >
                               <span>{handle}</span>
-                              <strong>x</strong>
+                              <span aria-hidden="true">×</span>
                             </button>
                           ))
                         ) : (
@@ -1701,7 +2533,7 @@ export default function App() {
                         activeNote.versions.slice(0, 6).map((version) => (
                           <div key={version.id} className="history-item">
                             <div>
-                              <strong>{version.title || "Untitled note"}</strong>
+                              <strong>{version.title || "Untitled Note"}</strong>
                               <span>{formatDateTime(version.savedAt)}</span>
                             </div>
                             <button
@@ -1720,7 +2552,7 @@ export default function App() {
                     </div>
                   </details>
                 </>
-              )}
+              ) : null}
             </div>
           </section>
         </div>

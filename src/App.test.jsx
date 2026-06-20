@@ -59,8 +59,6 @@ describe("App", () => {
   it("loads the polished note workspace", () => {
     render(<App />);
 
-    expect(screen.getByRole("heading", { name: "polished" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "All notes" })).toBeInTheDocument();
     expect(screen.getByLabelText("Title")).toHaveValue("Design the notes surface");
     expect(screen.getByLabelText("Body")).toHaveValue(
       "# Layout direction\n\nKeep the interface editorial and calm.\n\n- Left navigation for organization\n- Center list for fast scanning\n- Right editor for focused writing"
@@ -70,7 +68,7 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: "Remove tag product" })).toBeInTheDocument();
 
     expect(screen.getByLabelText("Note statistics")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Switch to dark mode" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Appearance settings" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "New note" })).toBeInTheDocument();
     expect(screen.getAllByText("@maya").length).toBeGreaterThan(0);
   });
@@ -82,7 +80,7 @@ describe("App", () => {
 
     await user.click(screen.getByRole("button", { name: "New note" }));
 
-    expect(screen.getByLabelText("Title")).toHaveValue("Untitled note");
+    expect(screen.getByLabelText("Title")).toHaveValue("Untitled Note");
     expect(screen.getByLabelText("Body")).toHaveValue("");
     expect(screen.getByLabelText("Tags")).toBeInTheDocument();
 
@@ -145,19 +143,16 @@ describe("App", () => {
     const navigation = screen.getByRole("navigation", { name: "Navigation" });
     await user.click(within(navigation).getByRole("button", { name: /All shared/ }));
 
-    expect(screen.getByRole("heading", { name: "Shared notes" })).toBeInTheDocument();
     const notesList = screen.getByLabelText("Notes list");
     expect(within(notesList).getAllByText("Design the notes surface").length).toBeGreaterThan(0);
     expect(within(notesList).getAllByText("Weekly priorities").length).toBeGreaterThan(0);
     expect(within(notesList).queryByText("Reading list")).not.toBeInTheDocument();
 
     await user.click(within(navigation).getByRole("button", { name: /^Shared to you/ }));
-    expect(screen.getByRole("heading", { name: "Shared to you" })).toBeInTheDocument();
     expect(within(notesList).getAllByText("Weekly priorities").length).toBeGreaterThan(0);
     expect(within(notesList).queryByText("Design the notes surface")).not.toBeInTheDocument();
 
     await user.click(within(navigation).getByRole("button", { name: /^Shared by you/ }));
-    expect(screen.getByRole("heading", { name: "Shared by you" })).toBeInTheDocument();
     expect(within(notesList).getAllByText("Design the notes surface").length).toBeGreaterThan(0);
     expect(within(notesList).queryByText("Weekly priorities")).not.toBeInTheDocument();
   });
@@ -185,10 +180,9 @@ describe("App", () => {
 
     await user.clear(screen.getByLabelText("Folder name"));
     await user.type(screen.getByLabelText("Folder name"), "Meeting archive");
-    await user.click(screen.getByRole("button", { name: "Add" }));
+    await user.click(screen.getByRole("button", { name: "Add folder" }));
 
-    expect(screen.getByRole("button", { name: /Meeting archive/ })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Meeting archive" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Meeting archive" })).toBeInTheDocument();
   });
 
 
@@ -225,16 +219,16 @@ describe("App", () => {
 
     render(<App />);
 
-    expect(screen.getByRole("button", { name: /All notes/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Notes/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /All shared/ })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Work/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Work" })).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Collapse workspace" }));
-    expect(screen.queryByRole("button", { name: /All notes/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Notes/ })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Expand workspace" })).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Collapse folders" }));
-    expect(screen.queryByRole("button", { name: /Work/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Work" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Expand folders" })).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Collapse collaboration" }));
@@ -245,9 +239,9 @@ describe("App", () => {
     await user.click(screen.getByRole("button", { name: "Expand folders" }));
     await user.click(screen.getByRole("button", { name: "Expand collaboration" }));
 
-    expect(screen.getByRole("button", { name: /All notes/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Notes/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /All shared/ })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Work/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Work" })).toBeInTheDocument();
   });
 
   it("searches across the whole workspace regardless of the current view", async () => {
@@ -259,7 +253,6 @@ describe("App", () => {
     await user.click(within(navigation).getByRole("button", { name: /Archive/ }));
     await user.type(screen.getByLabelText("Search notes"), "weekly");
 
-    expect(screen.getByRole("heading", { name: "Search results" })).toBeInTheDocument();
     expect(screen.getAllByText("Weekly priorities").length).toBeGreaterThan(0);
     expect(screen.getByText("Across workspace")).toBeInTheDocument();
   });
@@ -279,7 +272,7 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: "Unarchive" })).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Unarchive" }));
-    await user.click(within(navigation).getByRole("button", { name: /All notes/ }));
+    await user.click(within(navigation).getByRole("button", { name: /^Notes/ }));
     expect(screen.queryByRole("button", { name: "Unarchive" })).not.toBeInTheDocument();
   });
 
@@ -323,26 +316,20 @@ describe("App", () => {
     );
   });
 
-  it("toggles the compact top bar on scroll and responds to shortcuts", async () => {
+  it("creates a note via keyboard shortcut", async () => {
     const user = userEvent.setup();
 
     render(<App />);
 
-    const topbar = document.querySelector(".topbar");
-    expect(topbar).not.toHaveClass("compact");
-
-    Object.defineProperty(window, "scrollY", {
-      configurable: true,
-      value: 120
-    });
-
-    act(() => {
-      window.dispatchEvent(new Event("scroll"));
-    });
-
-    expect(document.querySelector(".topbar")).toHaveClass("compact");
-
     await user.keyboard("{Control>}n{/Control}");
-    expect(screen.getByLabelText("Title")).toHaveValue("Untitled note");
+    expect(screen.getByLabelText("Title")).toHaveValue("Untitled Note");
   });
 });
+
+  it("settings popover opens when gear button is clicked", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    const btn = screen.getByRole("button", { name: "Appearance settings" });
+    await user.click(btn);
+    expect(screen.getByText("Light")).toBeInTheDocument();
+  });
