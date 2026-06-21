@@ -14,10 +14,12 @@ A local-first React notes workspace for fast meeting notes, task lists, one-off 
 - Tag chips and collaborator chips on notes
 - Local autosave and version history per note
 - Per-note tabs in the editor (open, switch, close)
-- Collapsible collection column and inspector panel (animated)
-- Collapsible sidebar sections (Workspace, Folders, Collaboration)
+- Collapsible collection column and details panel (animated)
+- Collapsible sidebar sections (Workspace, Folders, Collaboration) — open/closed state persists across reloads
 - Line number toggle (Settings → Editor)
 - Dark mode only — bear/glass visual style
+- Native macOS window dragging from any panel's top bar (Electron build)
+- Custom app icon and Dock identity (Electron build)
 
 ## Design Language
 
@@ -25,6 +27,8 @@ The UI uses a **pill/circle** design language:
 - Text buttons and inputs: `border-radius: 999px` (pill)
 - Icon buttons and color swatches: `border-radius: 50%` (circle)
 - Single dark theme — bear gradient background with glass panels
+- System font stack (`-apple-system` / SF Pro on macOS) for native-feeling type
+- Small line icons (14px, 1.6 stroke) next to every sidebar and details-panel action, drawn from a shared icon set
 
 ## Tech
 
@@ -41,7 +45,7 @@ npm install
 npm run dev
 ```
 
-Then open `http://localhost:5174`.
+Then open `http://localhost:5173`.
 
 ## Run as macOS App (Electron)
 
@@ -55,13 +59,17 @@ npm run dev
 npm run electron
 ```
 
+The Electron main process enforces a single-instance lock — launching a second copy focuses the existing window instead of opening a duplicate.
+
 ## Build macOS App (DMG)
 
 ```bash
 npm run electron:build
 ```
 
-Output goes to `release/`.
+Output goes to `release/` (gitignored — rebuild locally rather than pulling from git). Builds both `arm64` (Apple Silicon) and `x64` (Intel) DMGs. The packaged app is unsigned, so macOS Gatekeeper will block the first launch — right-click the app in Applications → Open → Open to bypass it once.
+
+To change the app icon, replace `electron/icons/icon.icns` (regenerate from `polished-icon.svg` with `sips`/`iconutil`, or any 1024×1024 source image) and rebuild.
 
 ## Test
 
@@ -80,7 +88,11 @@ npm run build
 ```text
 polished/
   electron/
-    main.js           ← Electron main process
+    main.js           ← Electron main process (window, menu, single-instance lock)
+    icons/
+      icon.icns       ← macOS app icon (all sizes bundled)
+      icon.png        ← 1024×1024 source render
+  polished-icon.svg    ← Source vector icon
   src/
     App.jsx           ← State, effects, handlers, and top-level layout
     style.css         ← All styles (single bear/glass dark system)
@@ -90,7 +102,8 @@ polished/
       Sidebar.jsx         ← Navigation, folders, settings popover
       CollectionPanel.jsx ← Note/task list with search and filters
       EditorPanel.jsx     ← Tab bar, note editor, checklist editor
-      InspectorPanel.jsx  ← Tags, details, collaborators, version history
+      InspectorPanel.jsx  ← Details panel: actions, tags, properties, collaborators, version history
+      Icon.jsx            ← Shared line-icon set used by Sidebar and InspectorPanel
       NoteCard.jsx        ← Note list card
       TaskCard.jsx        ← Task list card
     lib/
@@ -99,5 +112,5 @@ polished/
       markdown.js     ← deriveTitleFromContent, renderMarkdown, shouldStoreVersion
       normalizers.js  ← Data shape normalizers (note, folder, checklist, etc.)
       seed.js         ← Default seed data
-      storage.js      ← localStorage load/save helpers
+      storage.js      ← localStorage load/save helpers (app state + UI prefs)
 ```

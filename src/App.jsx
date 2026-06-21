@@ -35,6 +35,7 @@ export default function App() {
     return s.activeId ? [s.activeId] : (s.notes[0]?.id ? [s.notes[0].id] : []);
   });
   const [showLineNumbers, setShowLineNumbers] = useState(() => loadUiPrefs().showLineNumbers);
+  const [sidebarSections, setSidebarSections] = useState(() => loadUiPrefs().sidebarSections);
   const searchRef = useRef(null);
   const titleRef = useRef(null);
   const checklistTitleRef = useRef(null);
@@ -80,8 +81,6 @@ export default function App() {
     count: notes.filter((n) => n.folderId === f.id && !n.isDeleted && !n.isArchived).length,
   })), [folders, notes]);
 
-  const folderName = activeNote ? folderMap.get(activeNote.folderId)?.name || "Folder" : "Folder";
-
   useEffect(() => {
     if (activeId && openTabs.length > 0 && !openTabs.includes(activeId)) {
       setAppState((curr) => ({ ...curr, activeId: openTabs[openTabs.length - 1] }));
@@ -91,8 +90,8 @@ export default function App() {
   useEffect(() => { saveAppState(appState); }, [appState]);
 
   useEffect(() => {
-    saveUiPrefs({ collectionCollapsed: isCollectionCollapsed, inspectorCollapsed: isInspectorCollapsed, showLineNumbers });
-  }, [isCollectionCollapsed, isInspectorCollapsed, showLineNumbers]);
+    saveUiPrefs({ collectionCollapsed: isCollectionCollapsed, inspectorCollapsed: isInspectorCollapsed, showLineNumbers, sidebarSections });
+  }, [isCollectionCollapsed, isInspectorCollapsed, showLineNumbers, sidebarSections]);
 
   useEffect(() => {
     shortcutActionsRef.current = {
@@ -431,6 +430,8 @@ export default function App() {
             onToggleLineNumbers={() => setShowLineNumbers((v) => !v)}
             onCreateFolder={createFolder}
             onDeleteFolder={deleteFolder}
+            sections={sidebarSections}
+            onToggleSection={(key) => setSidebarSections((s) => ({ ...s, [key]: !s[key] }))}
           />
           <CollectionPanel
             activeView={activeView}
@@ -485,7 +486,6 @@ export default function App() {
             isCollapsed={isInspectorCollapsed}
             onToggleCollapsed={() => setIsInspectorCollapsed((v) => !v)}
             folders={folders}
-            folderName={folderName}
             onUpdateActiveNote={updateActiveNote}
             onTogglePinned={togglePinned}
             onToggleFavorite={toggleFavorite}

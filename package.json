@@ -1,5 +1,8 @@
 {
   "name": "polished",
+  "version": "1.0.0",
+  "description": "A local-first notes and task workspace",
+  "author": "Polished",
   "main": "electron/main.js",
   "scripts": {
     "dev": "vite",
@@ -37,6 +40,7 @@
     ],
     "mac": {
       "category": "public.app-category.productivity",
+      "icon": "electron/icons/icon.icns",
       "target": [
         {
           "target": "dmg",

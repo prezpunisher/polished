@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
+import Icon from "./Icon.jsx";
 
 const WORKSPACE_NAV = [
   { kind: "all",       label: "All" },
@@ -29,8 +30,9 @@ export default function Sidebar({
   onToggleLineNumbers,
   onCreateFolder,
   onDeleteFolder,
+  sections,
+  onToggleSection,
 }) {
-  const [sections, setSections] = useState({ workspace: true, folders: true, collaboration: true });
   const [folderInput, setFolderInput] = useState("");
   const [showSettings, setShowSettings] = useState(false);
   const [settingsAnchor, setSettingsAnchor] = useState(null);
@@ -51,10 +53,6 @@ export default function Sidebar({
   function handleCreateFolder() {
     onCreateFolder(folderInput);
     setFolderInput("");
-  }
-
-  function toggle(key) {
-    setSections((s) => ({ ...s, [key]: !s[key] }));
   }
 
   function navCount(kind) {
@@ -88,7 +86,7 @@ export default function Sidebar({
             type="button"
             className={`section-heading${sections.workspace ? " open" : ""}`}
             aria-label={sections.workspace ? "Collapse workspace" : "Expand workspace"}
-            onClick={() => toggle("workspace")}
+            onClick={() => onToggleSection("workspace")}
           >
             <div className="section-heading-copy">
               <p className="eyebrow">Workspace</p>
@@ -105,7 +103,7 @@ export default function Sidebar({
                   className={`nav-item ${activeView.kind === kind ? "active" : ""}`}
                   onClick={() => onSelectView({ kind })}
                 >
-                  <span>{label}</span>
+                  <span><Icon name={kind} />{label}</span>
                   <strong>{navCount(kind)}</strong>
                 </button>
               ))}
@@ -118,7 +116,7 @@ export default function Sidebar({
             type="button"
             className={`section-heading${sections.folders ? " open" : ""}`}
             aria-label={sections.folders ? "Collapse folders" : "Expand folders"}
-            onClick={() => toggle("folders")}
+            onClick={() => onToggleSection("folders")}
           >
             <div className="section-heading-copy">
               <p className="eyebrow">Folders</p>
@@ -177,7 +175,7 @@ export default function Sidebar({
             type="button"
             className={`section-heading${sections.collaboration ? " open" : ""}`}
             aria-label={sections.collaboration ? "Collapse collaboration" : "Expand collaboration"}
-            onClick={() => toggle("collaboration")}
+            onClick={() => onToggleSection("collaboration")}
           >
             <div className="section-heading-copy">
               <p className="eyebrow">Collaboration</p>
@@ -194,7 +192,7 @@ export default function Sidebar({
                   className={`nav-item ${activeView.kind === kind ? "active" : ""}`}
                   onClick={() => onSelectView({ kind })}
                 >
-                  <span>{label}</span>
+                  <span><Icon name={kind} />{label}</span>
                   <strong>{navCount(kind)}</strong>
                 </button>
               ))}

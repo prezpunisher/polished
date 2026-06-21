@@ -2,6 +2,11 @@ const { app, BrowserWindow, Menu } = require('electron')
 const path = require('path')
 
 const isDev = !app.isPackaged
+const gotSingleInstanceLock = app.requestSingleInstanceLock()
+
+if (!gotSingleInstanceLock) {
+  app.quit()
+}
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -25,20 +30,32 @@ function createWindow() {
   }
 }
 
-app.whenReady().then(() => {
-  Menu.setApplicationMenu(Menu.buildFromTemplate([
-    { role: 'appMenu' },
-    { role: 'fileMenu' },
-    { role: 'editMenu' },
-    { role: 'viewMenu' },
-    { role: 'windowMenu' },
-  ]))
+if (gotSingleInstanceLock) {
+  app.whenReady().then(() => {
+    Menu.setApplicationMenu(Menu.buildFromTemplate([
+      { role: 'appMenu' },
+      { role: 'fileMenu' },
+      { role: 'editMenu' },
+      { role: 'viewMenu' },
+      { role: 'windowMenu' },
+    ]))
 
-  createWindow()
+    createWindow()
 
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow()
+    app.on('activate', () => {
+      if (BrowserWindow.getAllWindows().length === 0) createWindow()
+    })
   })
+}
+
+app.on('second-instance', () => {
+  const [win] = BrowserWindow.getAllWindows()
+  if (!win) {
+    createWindow()
+    return
+  }
+  if (win.isMinimized()) win.restore()
+  win.focus()
 })
 
 app.on('window-all-closed', () => {

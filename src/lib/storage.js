@@ -22,6 +22,8 @@ function normalizeView(view) {
   return { kind: "all" };
 }
 
+const defaultSidebarSections = { workspace: true, folders: true, collaboration: true };
+
 export function loadUiPrefs() {
   try {
     const stored = window.localStorage?.getItem(UI_KEY);
@@ -30,11 +32,20 @@ export function loadUiPrefs() {
       return {
         collectionCollapsed: Boolean(p.collectionCollapsed),
         inspectorCollapsed: Boolean(p.inspectorCollapsed),
-        showLineNumbers: Boolean(p.showLineNumbers)
+        showLineNumbers: Boolean(p.showLineNumbers),
+        sidebarSections: {
+          ...defaultSidebarSections,
+          ...(p.sidebarSections && typeof p.sidebarSections === "object" ? p.sidebarSections : {})
+        }
       };
     }
   } catch {}
-  return { collectionCollapsed: false, inspectorCollapsed: false, showLineNumbers: false };
+  return {
+    collectionCollapsed: false,
+    inspectorCollapsed: false,
+    showLineNumbers: false,
+    sidebarSections: defaultSidebarSections
+  };
 }
 
 export function saveUiPrefs(prefs) {

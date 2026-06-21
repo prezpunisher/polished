@@ -332,7 +332,7 @@ describe("App", () => {
     await user.click(within(navigation).getByRole("button", { name: /Trash/ }));
     expect(screen.getAllByText("Weekly priorities").length).toBeGreaterThan(0);
 
-    const inspector = screen.getByLabelText("Inspector");
+    const inspector = screen.getByLabelText("Details");
     await user.click(within(inspector).getByRole("button", { name: /^Restore$/ }));
     expect(within(inspector).queryByRole("button", { name: "Restore" })).not.toBeInTheDocument();
   });

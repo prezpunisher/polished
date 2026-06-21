@@ -1,0 +1,44 @@
+<svg width="4096" height="4096" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <path id="pPath" fill-rule="evenodd"
+      d="M168 154 A30 30 0 0 1 198 124 L300 124 C348 124 374 164 374 210
+         C374 256 348 318 224 318 L224 384 L210 470 Q196 496 182 470 L168 384 Z
+         M224 190 L272 190 C302 190 318 208 318 224 C318 244 302 258 272 258 L224 258 Z"/>
+    <clipPath id="pClip"><use href="#pPath"/></clipPath>
+
+    <!-- one gradient shared by the P and the off-edge glint, so the greens are identical.
+         Endpoints are in the group's local space but map to canvas (0,0)->(256,1024). -->
+    <linearGradient id="pg" gradientUnits="userSpaceOnUse"
+      x1="-48.75" y1="-16.25" x2="111.25" y2="623.75">
+      <stop offset="0"    stop-color="#7BAE68"/>
+      <stop offset="0.48" stop-color="#4F9059"/>
+      <stop offset="1"    stop-color="#2C6440"/>
+    </linearGradient>
+
+    <filter id="lift" x="-30%" y="-30%" width="160%" height="170%">
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#2B4A2D" flood-opacity="0.22"/>
+    </filter>
+
+    <clipPath id="tile"><rect width="1024" height="1024" rx="232"/></clipPath>
+  </defs>
+
+  <g clip-path="url(#tile)">
+    <!-- pure white tile -->
+    <rect width="1024" height="1024" fill="#FFFFFF"/>
+
+    <g filter="url(#lift)">
+      <g transform="translate(78,26) scale(1.6)">
+        <!-- P body -->
+        <use href="#pPath" fill="url(#pg)"/>
+        <!-- glint: green spilling off-edge (same gradient = same green as the P) -->
+        <path d="M0,-1 C0.12,-0.32 0.32,-0.12 1,0 C0.32,0.12 0.12,0.32 0,1 C-0.12,0.32 -0.32,0.12 -1,0 C-0.32,-0.12 -0.12,-0.32 0,-1 Z"
+              transform="translate(340,134) scale(58)" fill="url(#pg)"/>
+        <!-- glint: white catching the surface (clipped to the P) -->
+        <g clip-path="url(#pClip)">
+          <path d="M0,-1 C0.12,-0.32 0.32,-0.12 1,0 C0.32,0.12 0.12,0.32 0,1 C-0.12,0.32 -0.32,0.12 -1,0 C-0.32,-0.12 -0.12,-0.32 0,-1 Z"
+                transform="translate(340,134) scale(58)" fill="#FFFFFF"/>
+        </g>
+      </g>
+    </g>
+  </g>
+</svg>

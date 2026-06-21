@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { colorOptions } from "../lib/constants.js";
 import { normalizeTagValue, normalizeHandle } from "../lib/normalizers.js";
 import { formatDateTime } from "../lib/filters.js";
+import Icon from "./Icon.jsx";
 
 export default function InspectorPanel({
   activeNote,
@@ -9,7 +10,6 @@ export default function InspectorPanel({
   isCollapsed,
   onToggleCollapsed,
   folders,
-  folderName,
   onUpdateActiveNote,
   onTogglePinned,
   onToggleFavorite,
@@ -68,15 +68,15 @@ export default function InspectorPanel({
   return (
     <section
       className={`inspector-panel${isCollapsed ? " inspector-panel--collapsed" : ""}`}
-      aria-label="Inspector"
+      aria-label="Details"
     >
       <div className="inspector-toggle-row">
         <button
           type="button"
           className={`inspector-toggle-btn${!isCollapsed ? " active" : ""}`}
           onClick={onToggleCollapsed}
-          aria-label={isCollapsed ? "Expand inspector" : "Collapse inspector"}
-          title="Inspector"
+          aria-label={isCollapsed ? "Expand details" : "Collapse details"}
+          title="Details"
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="3" x2="16" y2="21" />
@@ -88,30 +88,29 @@ export default function InspectorPanel({
         {activeTabChecklist ? (
           <>
             <div className="inspector-head">
-              <p className="eyebrow">Inspector</p>
-              <span className="inspector-note-location">Tasks</span>
+              <p className="eyebrow">Details</p>
             </div>
             <div className="inspector-actions">
               <button type="button" className="ghost-action" onClick={() => onPinChecklist(activeTabChecklist.id)}>
-                {activeTabChecklist.isPinned ? "Unpin" : "Pin"}
+                <Icon name="pinned" />{activeTabChecklist.isPinned ? "Unpin" : "Pin"}
               </button>
               <button type="button" className="ghost-action" onClick={() => onFavoriteChecklist(activeTabChecklist.id)}>
-                {activeTabChecklist.isFavorite ? "Unfavorite" : "Favorite"}
+                <Icon name="favorites" />{activeTabChecklist.isFavorite ? "Unfavorite" : "Favorite"}
               </button>
               <button type="button" className="ghost-action" onClick={() => onArchiveChecklist(activeTabChecklist.id)}>
-                {activeTabChecklist.isArchived ? "Unarchive" : "Archive"}
+                <Icon name="archive" />{activeTabChecklist.isArchived ? "Unarchive" : "Archive"}
               </button>
               {activeTabChecklist.isTrashed ? (
                 <>
-                  <button type="button" className="ghost-action" onClick={() => onRestoreChecklist(activeTabChecklist.id)}>Restore</button>
-                  <button type="button" className="danger-action" onClick={() => onPermanentlyDeleteChecklist(activeTabChecklist.id)}>Delete forever</button>
+                  <button type="button" className="ghost-action" onClick={() => onRestoreChecklist(activeTabChecklist.id)}><Icon name="restore" />Restore</button>
+                  <button type="button" className="danger-action" onClick={() => onPermanentlyDeleteChecklist(activeTabChecklist.id)}><Icon name="trash" />Delete forever</button>
                 </>
               ) : (
-                <button type="button" className="danger-action" onClick={() => onTrashChecklist(activeTabChecklist.id)}>Move to trash</button>
+                <button type="button" className="danger-action" onClick={() => onTrashChecklist(activeTabChecklist.id)}><Icon name="trash" />Move to trash</button>
               )}
             </div>
             <details className="editor-drawer" open>
-              <summary>Details</summary>
+              <summary>Properties<Icon name="chevron" /></summary>
               <div className="drawer-grid">
                 <div className="drawer-stack">
                   <span className="eyebrow">Progress</span>
@@ -135,26 +134,25 @@ export default function InspectorPanel({
         ) : activeNote ? (
           <>
             <div className="inspector-head">
-              <p className="eyebrow">Inspector</p>
-              <span className="inspector-note-location">{folderName}</span>
+              <p className="eyebrow">Details</p>
             </div>
             <div className="inspector-actions">
-              <button type="button" className="ghost-action" onClick={onTogglePinned}>{activeNote.isPinned ? "Unpin" : "Pin"}</button>
-              <button type="button" className="ghost-action" onClick={onToggleFavorite}>{activeNote.isFavorite ? "Unfavorite" : "Favorite"}</button>
-              <button type="button" className="ghost-action" onClick={onToggleArchive}>{activeNote.isArchived ? "Unarchive" : "Archive"}</button>
+              <button type="button" className="ghost-action" onClick={onTogglePinned}><Icon name="pinned" />{activeNote.isPinned ? "Unpin" : "Pin"}</button>
+              <button type="button" className="ghost-action" onClick={onToggleFavorite}><Icon name="favorites" />{activeNote.isFavorite ? "Unfavorite" : "Favorite"}</button>
+              <button type="button" className="ghost-action" onClick={onToggleArchive}><Icon name="archive" />{activeNote.isArchived ? "Unarchive" : "Archive"}</button>
               {activeNote.isDeleted ? (
                 <>
-                  <button type="button" className="ghost-action" onClick={onRestoreFromTrash}>Restore</button>
-                  <button type="button" className="danger-action" onClick={onDeleteForever}>Delete forever</button>
+                  <button type="button" className="ghost-action" onClick={onRestoreFromTrash}><Icon name="restore" />Restore</button>
+                  <button type="button" className="danger-action" onClick={onDeleteForever}><Icon name="trash" />Delete forever</button>
                 </>
               ) : (
-                <button type="button" className="danger-action" onClick={onSendToTrash}>Move to trash</button>
+                <button type="button" className="danger-action" onClick={onSendToTrash}><Icon name="trash" />Move to trash</button>
               )}
-              <button type="button" className="ghost-action" onClick={onDuplicate}>Duplicate</button>
+              <button type="button" className="ghost-action" onClick={onDuplicate}><Icon name="duplicate" />Duplicate</button>
             </div>
 
             <details className="editor-drawer" aria-label="Tags" open>
-              <summary>Tags</summary>
+              <summary>Tags<Icon name="chevron" /></summary>
               <div className="share-row drawer-body">
                 <div className="share-controls">
                   <input
@@ -188,8 +186,8 @@ export default function InspectorPanel({
               </div>
             </details>
 
-            <details className="editor-drawer" aria-label="Note details">
-              <summary>Details</summary>
+            <details className="editor-drawer" aria-label="Note properties">
+              <summary>Properties<Icon name="chevron" /></summary>
               <div className="drawer-grid">
                 <label className="editor-field">
                   <span>Folder</span>
@@ -219,8 +217,11 @@ export default function InspectorPanel({
 
             <details className="editor-drawer" aria-label="Collaborators">
               <summary>
-                Collaborators
-                <span>{activeNote.collaborators.length > 0 ? activeNote.collaborators.length : "Private"}</span>
+                <span className="drawer-summary-label">
+                  Collaborators
+                  <span className="drawer-count">{activeNote.collaborators.length > 0 ? activeNote.collaborators.length : "Private"}</span>
+                </span>
+                <Icon name="chevron" />
               </summary>
               <div className="share-row drawer-body">
                 <div className="share-controls">
@@ -254,7 +255,10 @@ export default function InspectorPanel({
             </details>
 
             <details className="editor-drawer" aria-label="Version history">
-              <summary>History<span>{activeNote.versions.length}</span></summary>
+              <summary>
+                <span className="drawer-summary-label">History<span className="drawer-count">{activeNote.versions.length}</span></span>
+                <Icon name="chevron" />
+              </summary>
               <div className="history-list">
                 {activeNote.versions.length > 0 ? (
                   activeNote.versions.slice(0, 6).map((version) => (

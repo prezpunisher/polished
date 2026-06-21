@@ -1,7 +1,7 @@
 :root {
   color: #f0f0f0;
   background: #1c1c1e;
-  font-family: Helvetica, Arial, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   --bg: #1c1c1e;
@@ -16,9 +16,9 @@
   --text-muted: #8e8e93;
   --accent: #4762e8;
   --accent-soft: rgba(71, 98, 232, 0.12);
-  --nav-active-bg: #4762e8;
+  --nav-active-bg: rgba(255, 255, 255, 0.09);
   --nav-active-text: #ffffff;
-  --nav-active-count: rgba(255, 255, 255, 0.65);
+  --nav-active-count: rgba(255, 255, 255, 0.55);
 }
 
 * {
@@ -155,13 +155,26 @@ button {
 .primary-action,
 .ghost-action,
 .danger-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
   height: 32px;
   padding: 0 14px;
   border-radius: 999px;
   border: 1px solid var(--border);
+  font-size: 0.875rem;
+  font-weight: 450;
   transition:
     background-color 140ms ease,
     border-color 140ms ease;
+}
+
+.primary-action svg,
+.ghost-action svg,
+.danger-action svg {
+  flex-shrink: 0;
+  stroke-width: 1.6;
+  opacity: 0.75;
 }
 
 .primary-action {
@@ -243,6 +256,7 @@ button {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 8px 8px 0;
 }
 
@@ -254,11 +268,31 @@ button {
 }
 
 .electron-app .sidebar {
+  -webkit-app-region: no-drag;
+}
+
+.electron-app .sidebar::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 82px;
+  z-index: 3;
+  background: linear-gradient(
+    180deg,
+    rgba(28, 28, 30, 0.98) 0%,
+    rgba(28, 28, 30, 0.92) 68%,
+    rgba(28, 28, 30, 0) 100%
+  );
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
   -webkit-app-region: drag;
 }
 
 .electron-app .sidebar-body {
-  padding-top: 46px;
+  margin-top: 82px;
+  padding-top: 8px;
 }
 
 .electron-app .sidebar button,
@@ -267,8 +301,21 @@ button {
   -webkit-app-region: no-drag;
 }
 
+.electron-app .tab-bar,
+.electron-app .collection-toggle-row,
+.electron-app .inspector-toggle-row {
+  -webkit-app-region: drag;
+}
+
+.electron-app .tab-bar button,
+.electron-app .tab-bar a,
+.electron-app .collection-toggle-row button,
+.electron-app .inspector-toggle-row button {
+  -webkit-app-region: no-drag;
+}
+
 .sidebar-section + .sidebar-section {
-  margin-top: 10px;
+  margin-top: 20px;
 }
 
 .section-heading {
@@ -373,9 +420,11 @@ button {
   justify-content: space-between;
   gap: 10px;
   width: 100%;
-  padding: 10px 12px;
+  padding: 9px 12px;
   border-radius: 999px;
   color: var(--text-soft);
+  font-size: 0.875rem;
+  font-weight: 450;
   text-align: left;
 }
 
@@ -396,6 +445,16 @@ button {
   display: inline-flex;
   align-items: center;
   gap: 9px;
+}
+
+.nav-item svg {
+  flex-shrink: 0;
+  stroke-width: 1.6;
+  opacity: 0.6;
+}
+
+.nav-item.active svg {
+  opacity: 1;
 }
 
 .nav-item strong {
@@ -888,9 +947,8 @@ button {
 .inspector-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--border);
+  gap: 8px;
+  padding: 14px;
 }
 
 .inspector-content .share-controls {
@@ -898,8 +956,8 @@ button {
   align-items: stretch;
 }
 
-.inspector-content .share-controls input {
-  width: 100%;
+.share-controls .ghost-action {
+  height: 42px;
 }
 
 .editor-field {
@@ -909,8 +967,8 @@ button {
 
 .share-row {
   display: grid;
-  gap: 10px;
-  padding: 10px 0 0;
+  gap: 12px;
+  padding: 12px 0 0;
 }
 
 .share-controls {
@@ -920,14 +978,15 @@ button {
 }
 
 .share-controls input {
-  flex: 1;
-  min-width: 0;
-  height: 32px;
-  padding: 0 14px;
+  flex-shrink: 0;
+  width: 100%;
+  height: 42px;
+  padding: 0 18px;
   border: 1px solid var(--border);
   border-radius: 999px;
   background: var(--canvas);
   color: var(--text);
+  font-size: 0.9rem;
   outline: none;
 }
 
@@ -946,11 +1005,12 @@ button {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  height: 32px;
-  padding: 0 10px;
+  height: 34px;
+  padding: 0 12px;
   border: 1px solid var(--border);
   background: var(--panel);
   color: var(--text-soft);
+  font-size: 0.875rem;
   border-radius: 999px;
 }
 
@@ -1011,12 +1071,12 @@ button {
   background: transparent;
   box-shadow: none;
   font-size: 0.875rem;
-  font-family: Helvetica, Arial, sans-serif;
+  font-family: inherit;
   color: var(--text);
 }
 
 .editor-drawer {
-  margin: 10px 14px 0;
+  margin: 14px 14px 0;
   border-top: 1px solid var(--border);
 }
 
@@ -1029,16 +1089,35 @@ button {
   cursor: pointer;
   list-style: none;
   color: var(--text-soft);
-  font-size: 0.82rem;
+  font-size: 0.875rem;
+  font-weight: 450;
 }
 
 .editor-drawer summary::-webkit-details-marker {
   display: none;
 }
 
-.editor-drawer summary span {
+.drawer-summary-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.drawer-count {
   color: var(--text-muted);
   font-size: 0.82rem;
+}
+
+.editor-drawer summary svg {
+  flex-shrink: 0;
+  stroke-width: 1.6;
+  color: var(--text-muted);
+  transform: rotate(-90deg);
+  transition: transform 140ms ease;
+}
+
+.editor-drawer[open] > summary svg {
+  transform: rotate(0deg);
 }
 
 .drawer-body,
@@ -1575,11 +1654,6 @@ button {
 .inspector-toggle-btn.active {
   background: var(--accent-soft);
   color: var(--accent);
-}
-
-.inspector-note-location {
-  font-size: 0.78rem;
-  color: var(--text-muted);
 }
 
 /* ─── Sidebar search trigger ─────────────── */
