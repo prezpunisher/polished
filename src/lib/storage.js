@@ -33,6 +33,7 @@ export function loadUiPrefs() {
         collectionCollapsed: Boolean(p.collectionCollapsed),
         inspectorCollapsed: Boolean(p.inspectorCollapsed),
         showLineNumbers: Boolean(p.showLineNumbers),
+        theme: p.theme === "light" ? "light" : "dark",
         sidebarSections: {
           ...defaultSidebarSections,
           ...(p.sidebarSections && typeof p.sidebarSections === "object" ? p.sidebarSections : {})
@@ -44,6 +45,7 @@ export function loadUiPrefs() {
     collectionCollapsed: false,
     inspectorCollapsed: false,
     showLineNumbers: false,
+    theme: "dark",
     sidebarSections: defaultSidebarSections
   };
 }

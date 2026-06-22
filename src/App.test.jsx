@@ -390,4 +390,21 @@ describe("App", () => {
     await user.click(btn);
     expect(screen.getByText("Line numbers")).toBeInTheDocument();
   });
+
+  it("switches between dark and light theme and persists the choice", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    expect(document.documentElement.getAttribute("data-theme")).toBe("dark");
+
+    await user.click(screen.getByRole("button", { name: "Appearance settings" }));
+    const themeSwitch = screen.getByRole("switch", { name: "Toggle light mode" });
+    await user.click(themeSwitch);
+
+    expect(document.documentElement.getAttribute("data-theme")).toBe("light");
+    expect(themeSwitch).toHaveAttribute("aria-checked", "true");
+
+    await user.click(themeSwitch);
+    expect(document.documentElement.getAttribute("data-theme")).toBe("dark");
+  });
 });

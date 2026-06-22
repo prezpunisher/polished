@@ -3,7 +3,7 @@
 ## Project Location
 
 ```
-/Users/iffy/ai-projects/polished
+/Users/iffy/AI-Projects/polished
 ```
 
 ## Run in the Browser (Development)
@@ -15,7 +15,7 @@ npm run dev
 Vite will print a local address. We standardize on port 5173:
 
 ```
-http://localhost:5174/
+http://localhost:5173/
 ```
 
 ## Run as a Standalone Mac App (Electron)

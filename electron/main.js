@@ -15,7 +15,7 @@ function createWindow() {
     minWidth: 860,
     minHeight: 580,
     titleBarStyle: 'hiddenInset',
-    trafficLightPosition: { x: 16, y: 16 },
+    trafficLightPosition: { x: 16, y: 14 },
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,

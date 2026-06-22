@@ -36,6 +36,7 @@ export default function App() {
   });
   const [showLineNumbers, setShowLineNumbers] = useState(() => loadUiPrefs().showLineNumbers);
   const [sidebarSections, setSidebarSections] = useState(() => loadUiPrefs().sidebarSections);
+  const [theme, setTheme] = useState(() => loadUiPrefs().theme);
   const searchRef = useRef(null);
   const titleRef = useRef(null);
   const checklistTitleRef = useRef(null);
@@ -90,8 +91,12 @@ export default function App() {
   useEffect(() => { saveAppState(appState); }, [appState]);
 
   useEffect(() => {
-    saveUiPrefs({ collectionCollapsed: isCollectionCollapsed, inspectorCollapsed: isInspectorCollapsed, showLineNumbers, sidebarSections });
-  }, [isCollectionCollapsed, isInspectorCollapsed, showLineNumbers, sidebarSections]);
+    saveUiPrefs({ collectionCollapsed: isCollectionCollapsed, inspectorCollapsed: isInspectorCollapsed, showLineNumbers, sidebarSections, theme });
+  }, [isCollectionCollapsed, isInspectorCollapsed, showLineNumbers, sidebarSections, theme]);
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+  }, [theme]);
 
   useEffect(() => {
     shortcutActionsRef.current = {
@@ -413,6 +418,7 @@ export default function App() {
 
   return (
     <main className={`app-shell${isElectron ? " electron-app" : ""}`}>
+      {isElectron && <div className="app-titlebar" aria-hidden="true" />}
       <section className="notes-app" aria-label="Polished notes app">
         <div className={`workspace-grid${isCollectionCollapsed ? " collection-collapsed" : ""}${isInspectorCollapsed ? " inspector-collapsed" : ""}`}>
           <Sidebar
@@ -432,6 +438,8 @@ export default function App() {
             onDeleteFolder={deleteFolder}
             sections={sidebarSections}
             onToggleSection={(key) => setSidebarSections((s) => ({ ...s, [key]: !s[key] }))}
+            theme={theme}
+            onToggleTheme={() => setTheme((t) => (t === "light" ? "dark" : "light"))}
           />
           <CollectionPanel
             activeView={activeView}

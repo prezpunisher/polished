@@ -32,6 +32,8 @@ export default function Sidebar({
   onDeleteFolder,
   sections,
   onToggleSection,
+  theme,
+  onToggleTheme,
 }) {
   const [folderInput, setFolderInput] = useState("");
   const [showSettings, setShowSettings] = useState(false);
@@ -232,6 +234,22 @@ export default function Sidebar({
             className="settings-popover"
             style={{ position: "fixed", bottom: settingsAnchor.bottom, left: settingsAnchor.left }}
           >
+            <div>
+              <p className="settings-group-label">Appearance</p>
+              <div className="settings-row">
+                <span className="settings-row-label">Light mode</span>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={theme === "light"}
+                  className={`toggle-pill${theme === "light" ? " on" : ""}`}
+                  onClick={onToggleTheme}
+                  aria-label="Toggle light mode"
+                >
+                  <span className="toggle-pill-thumb" />
+                </button>
+              </div>
+            </div>
             <div>
               <p className="settings-group-label">Editor</p>
               <div className="settings-row">
